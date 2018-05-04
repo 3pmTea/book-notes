@@ -174,4 +174,105 @@
           (else false)))
   (try-from 2))
 
+; ========== E1.29
+
+(define (sum term a next b)
+  (if (> a b)
+      0
+      (+ (term a)
+         (sum term (next a) next b))))
+
+(define (integral f a b n)
+  (define h (/ (- b a) n))
+  (define (y k) (f (+ a (* h k))))
+  (define (term k)
+    (cond ((= k 0) (y k))
+          ((= k n) (y n))
+          ((even? k) (* 2 (y k)))
+          (else (* 4 (y k)))))
+  (define (next k) (+ k 1))
+  (/ (* h (sum term 0 next n)) 3))
+
+; ========== E1.30
+
+(define (solution-1.30 term a next b)
+  (define (iter a result)
+    (if (> a b)
+        result
+        (iter (next a) (+ (term a) result))))
+  (iter a 0))
+
+(define (test-1.30 n)
+  (solution-1.30 (lambda (x) x) 1 (lambda (x) (+ 1 x)) n))
+
+; ========== E1.31
+
+(define (product-rec term a next b)
+  (if (> a b)
+      1
+      (* (term a) (product-rec term (next a) next b))))
+
+(define (product-iter term a next b)
+  (define (iter a result)
+    (if (> a b)
+        result
+        (iter (next a) (* result (term a)))))
+  (iter a 1))
+
+(define (factorial-1.31 n)
+  (product-iter (lambda (x) x) 1 (lambda (x) (+ 1 x)) n))
+
+(define (pi-1.31 n)
+  (define (term x)
+    (if (even? x)
+        (/ (+ 2 x) (+ 1 x))
+        (/ (+ 1 x) (+ 2 x))))
+  (* 4.0 (product-iter term 1 (lambda (x) (+ 1 x)) n)))
+
+; ========== E1.32
+
+(define (accumulate-rec combiner null-value term a next b)
+  (if (> a b)
+      null-value
+      (combiner (term a)
+                (accumulate-rec combiner null-value term (next a) next b))))
+
+(define (accumulate-iter combiner null-value term a next b)
+  (define (iter a result)
+    (if (> a b)
+        (combiner null-value result)
+        (iter (next a)
+              (combiner (term a) result))))
+  (iter a null-value))
+
+(define (sum-1.32 term a next b)
+  (accumulate-iter + 0 term a next b))
+
+(define (product-1.32 term a next b)
+  (accumulate-iter * 1 term a next b))
+
+; ========== E1.33
+
+(define (filtered-accumulate filter combiner null-value term a next b)
+  (define (iter a result)
+    (if (> a b)
+        (combiner null-value result)
+        (iter (next a)
+              (combiner result (if (filter a)
+                                   (term a)
+                                   null-value)))))
+  (iter a null-value))
+
+(define (solution-1.33-a a b)
+  (filtered-accumulate prime? + 0 square a (lambda (x) (+ 1 x)) b))
+
+(define (solution-1.33-b n)
+  (filtered-accumulate (lambda (x) (= 1 (gcd x n)))
+                       *
+                       1
+                       (lambda (x) x)
+                       2
+                       (lambda (x) (+ 1 x))
+                       (- n 1)))
+
 ; ==========
