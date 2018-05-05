@@ -21,7 +21,7 @@
 
 ; ========== E1.8
 
-(define (cubic x)
+(define (cube x)
   (* x x x))
 
 (define (cube-root-iter guess x)
@@ -34,7 +34,7 @@
   (/ (+ (/ x (square guess)) (* 2 guess)) 3))
 
 (define (good-enough? guess x)
-  (< (abs (- (cubic guess) x)) 0.001))
+  (< (abs (- (cube guess) x)) 0.001))
 
 (define (cube-root x)
   (cube-root-iter 1.0 x))
@@ -416,3 +416,51 @@
         result
         (iter (/ (n i) (- (d i) result)) (- i 1))))
   (iter 0 k))
+
+; ========== E1.40
+
+(define (cubic a b c)
+  (lambda (x)
+    (+ (cube x)
+       (* (square x) a)
+       (* x b)
+       c)))
+
+; ========== E1.41
+
+(define inc
+  (lambda (x) (+ 1 x)))
+
+(define (double f)
+  (lambda (x) (f (f x))))
+
+; ========== E1.42
+
+(define (compose f g)
+  (lambda (x) (f (g x))))
+
+; ========== E1.43
+
+(define (repeated-iter f n)
+  (lambda (x)
+    (if (> n 1)
+        ((repeated-iter f (- n 1)) (f x))
+        (f x))))
+
+(define (repeated-rec f n)
+  (if (= n 1)
+      f
+      (compose f (repeated-rec f (- n 1)))))
+
+; ========== E1.44
+
+(define (smooth f)
+  (define dx 0.00001)
+  (define (average a b c)
+    (/ (+ a b c) 3))
+  (lambda (x)
+    (average (f (- x dx)) (f x) (f (+ x dx)))))
+
+(define (repeated-smooth f n)
+  ((repeated-iter smooth n) f))
+
