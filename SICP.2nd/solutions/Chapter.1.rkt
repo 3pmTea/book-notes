@@ -275,4 +275,144 @@
                        (lambda (x) (+ 1 x))
                        (- n 1)))
 
-; ==========
+; ========== E1.36
+
+(define tolerance 0.00001)
+(define (fixed-point f first-guess)
+  (define (close-enough? v1 v2)
+    (< (abs (- v1 v2)) tolerance))
+  (define (try guess)
+    (let ((next (f guess)))
+      (display next)
+      (newline)
+      (if (close-enough? guess next)
+          next
+          (try next))))
+  (try first-guess))
+
+(define (solution-1.36 guess)
+  (define (f x)
+    (/ (log 1000) (log x)))
+  (fixed-point f guess))
+
+(define (solution-1.36-damping guess)
+  (define (average x y)
+    (/ (+ x y) 2))
+  (define (f x)
+    (average x (/ (log 1000) (log x))))
+  (fixed-point f guess))
+
+; output:
+;> (solution-1.36 10)
+;2.9999999999999996
+;6.2877098228681545
+;3.7570797902002955
+;5.218748919675316
+;4.1807977460633134
+;4.828902657081293
+;4.386936895811029
+;4.671722808746095
+;4.481109436117821
+;4.605567315585735
+;4.522955348093164
+;4.577201597629606
+;4.541325786357399
+;4.564940905198754
+;4.549347961475409
+;4.5596228442307565
+;4.552843114094703
+;4.55731263660315
+;4.554364381825887
+;4.556308401465587
+;4.555026226620339
+;4.55587174038325
+;4.555314115211184
+;4.555681847896976
+;4.555439330395129
+;4.555599264136406
+;4.555493789937456
+;4.555563347820309
+;4.555517475527901
+;4.555547727376273
+;4.555527776815261
+;4.555540933824255
+;4.555532257016376
+;4.555532257016376
+;> (solution-1.36-damping 10)
+;6.5
+;5.095215099176933
+;4.668760681281611
+;4.57585730576714
+;4.559030116711325
+;4.55613168520593
+;4.555637206157649
+;4.55555298754564
+;4.555538647701617
+;4.555536206185039
+;4.555536206185039
+;
+; We can see that it converges much faster with average damping.
+
+; ========== E1.37
+
+(define (cont-frac-iter n d k)
+  (define (iter i result)
+    (if (= i 0)
+        result
+        (iter (- i 1) (/ (n i)
+                         (+ (d i) result)))))
+  (iter k 0))
+
+(define (calc-steps-1.37)
+  (define (close-enough? result)
+    (< (abs (- result (/ (- (sqrt 5) 1) 2))) 0.0001))
+  (define (n i) 1.0)
+  (define (d i) 1.0)
+  (define (finish k result)
+    (display k)
+    (newline)
+    (display result))
+  (define (iter k)
+    (let ((result (cont-frac-iter n d k)))
+      (if (close-enough? result)
+          (finish k result)
+          (iter (+ 1 k)))))
+  (iter 2))
+
+; Output:
+; 10
+; 0.6179775280898876
+
+(define (cont-frac-rec n d k)
+  (define (rec i)
+    (cond ((= i k) (/ (n k) (d k)))
+          (else (/ (n i) (+ (d i)
+                            (rec (+ i 1)))))))
+  (rec 1))
+
+; ========== E1.38
+
+(define (solution-1.38 steps)
+  (+ (cont-frac-iter (lambda (x) 1.0)
+                     (lambda (x)
+                       (let ((n (remainder x 3)))
+                         (cond ((= n 0) 1)
+                               ((= n 1) 1)
+                               (else (* 2 (/ (+ 1 x) 3))))))
+                     steps)
+     2))
+
+; ========== E1.39
+
+(define (tan-cf x k)
+  (define (n i)
+    (if (= i 1)
+        x
+        (square x)))
+  (define (d i)
+    (- (* 2 i) 1))
+  (define (iter result i)
+    (if (= 0 i)
+        result
+        (iter (/ (n i) (- (d i) result)) (- i 1))))
+  (iter 0 k))
