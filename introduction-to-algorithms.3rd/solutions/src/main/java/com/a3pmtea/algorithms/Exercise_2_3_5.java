@@ -1,4 +1,4 @@
-package algorithms;
+package com.a3pmtea.algorithms;
 
 /**
  * Exercise 2.3-5
@@ -9,7 +9,7 @@ package algorithms;
  * sequence each time. Write pseudocode, either iterative or recursive, for binary
  * search. Argue that the worst-case running time of binary search is o(lgN).
  */
-public class ArrayBinarySearch {
+public class Exercise_2_3_5 {
 
     /**
      * Find the index of a given number in an array, using recursion

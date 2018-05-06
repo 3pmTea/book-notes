@@ -1,4 +1,4 @@
-package algorithms;
+package com.a3pmtea.algorithms;
 
 import java.util.Arrays;
 
@@ -8,7 +8,7 @@ import java.util.Arrays;
  * once either array L or R has had all its elements copied back to A and then copying
  * the remainder of the other array back into A.
  */
-public class ArrayMerge {
+public class Exercise_2_3_2 {
     /**
      * Merge two sorted arrays into one sorted array
      *

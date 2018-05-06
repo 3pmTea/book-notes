@@ -1,4 +1,4 @@
-package algorithms;
+package com.a3pmtea.algorithms;
 
 /**
  * Exercise 2.3-7
@@ -12,7 +12,7 @@ package algorithms;
  *
  */
 
-public class TwoSum {
+public class Exercise_2_3_7 {
 
     public static boolean findSum(int[] a, int n) {
         if (a.length < 2) return false;
@@ -81,12 +81,12 @@ public class TwoSum {
         int[] b = new int[] { 6, 3, 6, 7, 9, 10, 2 };
         int[] c = new int[] { 2 };
         int[] d = new int[] {};
-        System.out.println(TwoSum.findSum(a, 12));
-        System.out.println(TwoSum.findSum(b, 12));
-        System.out.println(TwoSum.findSum(a, 23));
-        System.out.println(TwoSum.findSum(a, 23));
-        System.out.println(TwoSum.findSum(c, 2));
-        System.out.println(TwoSum.findSum(c, 4));
-        System.out.println(TwoSum.findSum(d, 0));
+        System.out.println(Exercise_2_3_7.findSum(a, 12));
+        System.out.println(Exercise_2_3_7.findSum(b, 12));
+        System.out.println(Exercise_2_3_7.findSum(a, 23));
+        System.out.println(Exercise_2_3_7.findSum(a, 23));
+        System.out.println(Exercise_2_3_7.findSum(c, 2));
+        System.out.println(Exercise_2_3_7.findSum(c, 4));
+        System.out.println(Exercise_2_3_7.findSum(d, 0));
     }
 }
