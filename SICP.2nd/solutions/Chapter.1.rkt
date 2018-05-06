@@ -465,3 +465,92 @@
   ((repeated-iter smooth n) f))
 
 ; ========== E1.45
+
+(define (average-damp f)
+  (lambda (x)
+    (/ (+ x (f x)) 2)))
+
+; Find a fixed point of f, but try for limited times.
+; Return a fixed point or 0, which indicate that the process is not converging.
+(define (fixed-point-1.45 f first-guess times)
+  (define tolerance 0.00001)
+  (define (close-enough? v1 v2)
+    (< (abs (- v1 v2)) tolerance))
+  (define (iter guess n)
+    (let ((next (f guess)))
+      (cond ((close-enough? guess next) next)
+            ((> n times) 0)
+            (else (iter next (+ n 1))))))
+  (iter first-guess 1))
+
+(define (convergence-trier n damp-times)
+  (define (n-th-root base guess times)
+    (fixed-point-1.45 ((repeated-iter average-damp damp-times)
+                       (lambda (x)
+                         (/ base (expt x (- n 1)))))
+                      guess
+                      times))
+  (n-th-root 10 1.0 500))
+
+; Determine how many damps are required to compute n-th root
+(define (find-damp-times n)
+  (define (iter i)
+    (let ((result (convergence-trier n i)))
+      (cond ((> i n) (display "too many damp times required") 0)
+            ((= result 0) (iter (+ i 1)))
+            (else i))))
+  (iter 1))
+
+; Try from 4-th root to max-n-th root
+(define (list-damp-times)
+  (define max-n 128)
+  (define (iter i)
+    (display i)
+    (display "-th root requires ")
+    (display (find-damp-times i))
+    (display " damps")
+    (newline)
+    (if (> i max-n)
+        (newline)
+        (iter (+ i 1))))
+  (iter 4))
+
+; Output:
+; 4-th root requires 2 damps
+; ...
+; 7-th root requires 2 damps
+; 8-th root requires 3 damps
+; ...
+; 15-th root requires 3 damps
+; 16-th root requires 4 damps
+; ...
+;
+; It can be proved that, to find the n-th root, at least floor(log2(n)) damps are required
+
+(define (n-th-root base n)
+  (fixed-point ((repeated-iter average-damp (floor (log n 2)))
+                (lambda (x)
+                  (/ base (expt x (- n 1)))))
+                1.0))
+
+; ========== E1.46
+
+(define (iterative-improve good-enough? improve)
+  (lambda (guess)
+    (if (good-enough? guess)
+        guess
+        ((iterative-improve good-enough? improve) (improve guess)))))
+
+(define (sqrt-1.46 x)
+  ((iterative-improve (lambda (guess)
+                        (< (abs (- (square guess) x)) tolerance))
+                      (lambda (guess)
+                        (/ (+ guess (/ x guess)) 2)))
+   1.0))
+
+(define (fixed-point-1.46 f first-guess)
+  ((iterative-improve (lambda (guess)
+                        (let ((next (f guess)))
+                          (< (abs (- next guess)) tolerance)))
+                      f)
+   first-guess))
