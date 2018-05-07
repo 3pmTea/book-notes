@@ -3,7 +3,7 @@ Merging arrays in *O(N)* time and *O(1)* space
 
 Description:
 ---
-It's easy to realize that sorting a linked list using merge sort costs O(1) space.
+It's easy to realize that merging two sorted linked list costs O(1) space.
 
 Reference:
 ---
