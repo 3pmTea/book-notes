@@ -1,8 +1,12 @@
 Merging arrays in *O(N)* time and *O(1)* space
 ===
 
+Description:
+---
+It's easy to realize that sorting a linked list using merge sort costs O(1) space.
 
-### Reference:
+Reference:
+---
 [StackOverflow](https://stackoverflow.com/questions/2571049/how-to-sort-in-place-using-the-merge-sort-algorithm)
 
 [GeeksForGeeks (Is this algorithm valid?)](https://www.geeksforgeeks.org/efficiently-merging-two-sorted-arrays-with-o1-extra-space/)
