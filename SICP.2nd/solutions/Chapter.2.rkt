@@ -59,6 +59,13 @@
    (make-interval (/ 1.0 (upper-bound y))
                   (/ 1.0 (lower-bound y)))))
 
+(define (make-center-width c w)
+  (make-interval (- c w) (+ c w)))
+(define (center i)
+  (/ (+ (lower-bound i) (upper-bound i)) 2))
+(define (width i)
+  (/ (- (upper-bound i) (lower-bound i)) 2))
+
 ; ========== E2.1
 
 (define (make-rat-2.1 n d)
@@ -242,3 +249,63 @@
           ((and (neg? x) (cross-0? y)) (make-interval (* xl yu) (* xl yl)))
           ((and (neg? x) (neg? y)) (make-interval (* xu yu) (* xl yl))))))
 
+; ========== E2.12
+
+(define (make-center-percent c p)
+  (let ((w (* c p)))
+    (make-center-width c w)))
+
+(define (percent i)
+  (/ (width i) (center i)))
+
+; ========== E2.13
+
+; let X = (make-center-percent x p) and Y = (make-center-percent y q), Z = X * Y, then
+; the lower-bound of Z = (x - px)(y - qy) = (1 - p - q + pq)xy,
+; the upper-bound of Z = (x + px)(y + qy) = (1 + p + q + pq)xy.
+; Since p and q are small, pq can be ignored. Thus (percent Z) = p + q.
+
+; ========== E2.17
+
+(define (last-pair-2.17 l)
+  (let ((following (cdr l)))
+    (if (null? following)
+        (list (car l))
+        (last-pair-2.17 following))))
+
+; ========== E2.18
+
+(define (reverse-2.18 l)
+  (if (null? l)
+      l
+      (append (reverse (cdr l)) (list (car l)))))
+
+; ========== E2.19
+
+(define (cc-2.19 amount coin-values)
+  (cond ((= amount 0) 1)
+        ((or (< amount 0) (no-more? coin-values)) 0)
+        (else (+ (cc-2.19 amount
+                     (except-first-denomination coin-values))
+                 (cc-2.19 (- amount (first-denomination coin-values))
+                     coin-values)))))
+
+(define no-more? null?)
+(define except-first-denomination cdr)
+(define first-denomination car)
+
+; ========== E2.20
+
+(define (same-parity x . l)
+  (define parity-filter
+    (if (even? x) even? odd?))
+  (define (iter result remaining)
+    (if (null? remaining)
+        result
+        (let ((e (car remaining))
+              (others (cdr remaining)))
+          (if (parity-filter e)
+              ; this can be done more efficiently
+              (iter (append result (list e)) others)
+              (iter result others)))))
+  (iter (list x) l))
