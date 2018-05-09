@@ -355,3 +355,110 @@
 ;                3    4
 
 ; ========== E2.25
+; (define a (list 1 3 (list 5 7) 9))
+; (define b (list (list 7)))
+; (define c (list 1 (list 2 (list 3 (list 4 (list 5 (list 6 7)))))))
+;
+; (car (cdr (car (cdr (cdr a)))))
+; (car (car b))
+; (car (cdr (car (cdr (car (cdr (car (cdr (car (cdr (car (cdr c))))))))))))
+
+; ========== E2.27
+
+(define (deep-reverse l)
+  (define (iter result rest)
+    (cond ((null? rest) result)
+          ((not (pair? rest)) rest)
+          (else (iter (cons (iter (list) (car rest)) result) (cdr rest)))))
+  (if (pair? l)
+      (iter (list) l)
+      (error "expect a list")))
+
+; ========== E2.28
+
+(define (fringe t)
+  (define (f tree)
+    (cond ((null? tree) tree)
+          ((not (pair? tree)) (list tree))
+          (else (append (f (car tree)) (f (cdr tree))))))
+  (if (pair? t)
+      (f t)
+      (error "expect a tree")))
+
+; ========== E2.29
+
+(define (make-mobile left right)
+  (list left right))
+; structure is either weight or mobile
+(define (make-branch length structure)
+  (list length structure))
+
+; a
+(define (left-branch mobile)
+  (car mobile))
+(define (right-branch mobile)
+  (car (cdr mobile)))
+(define (branch-length branch)
+  (car branch))
+(define (branch-structure branch)
+  (car (cdr branch)))
+
+; b
+(define (total-weight mobile)
+  (cond ((null? mobile) 0)
+        ((not (pair? mobile)) mobile)
+        (else (+ (total-weight (branch-structure (left-branch mobile)))
+                 (total-weight (branch-structure (right-branch mobile)))))))
+
+; c
+(define (balanced? mobile)
+  (define (torque branch)
+    (* (branch-length branch) (total-weight (branch-structure branch))))
+  (cond ((null? mobile) true)
+        ((not (pair? mobile)) true)
+        (else (let ((l (left-branch mobile))
+                    (r (right-branch mobile)))
+                (and (= (torque l) (torque r))
+                     (balanced? (branch-structure l))
+                     (balanced? (branch-structure r)))))))
+
+; d
+(define (right-branch-c mobile)
+  (cdr mobile))
+(define (branch-structure-c branch)
+  (cdr branch))
+
+; ========== E2.30
+
+(define (square-tree-1 tree)
+  (define (square x) (* x x))
+  (cond ((null? tree) tree)
+        ((not (pair? tree)) (square tree))
+        (else (cons (square-tree-1 (car tree))
+                    (square-tree-1 (cdr tree))))))
+
+(define (square-tree-2 tree)
+  (map (lambda (t)
+         (if (pair? t)
+             (square-tree-2 t)
+             (* t t)))
+       tree))
+
+; ========== E2.31
+
+(define (tree-map f tree)
+  (cond ((null? tree) tree)
+        ((not (pair? tree)) (f tree))
+        (else (cons (tree-map f (car tree))
+                    (tree-map f (cdr tree))))))
+
+; ========== E2.32
+
+(define (subsets s)
+  (if (null? s)
+      (list s)
+      (let ((rest (subsets (cdr s))))
+        (append rest
+                (map (lambda (x)
+                       (cons (car s) x))
+                     rest)))))
