@@ -309,3 +309,49 @@
               (iter (append result (list e)) others)
               (iter result others)))))
   (iter (list x) l))
+
+; ========== E2.21
+
+(define (square-list-2.21-1 items)
+  (if (null? items)
+      '()
+      (cons (let ((e (car items)))
+              (* e e))
+            (square-list-2.21-1 (cdr items)))))
+
+(define (square-list-2.21-2 items)
+  (map (lambda (x) (* x x)) items))
+
+; ========== E2.23
+
+(define (for-each-2.23 do-something items)
+  (if (null? items)
+      (newline)
+      ((lambda (l)
+        (do-something (car l))
+        (for-each-2.23 do-something (cdr l))) items)))
+
+; ========== E2.24
+
+; (1 (2 (3 4)))
+;
+; OO--OX
+; |   |
+; 1   OO--OX
+;     |   |
+;     2   OO--OX
+;         |   |
+;         3   4
+;
+;     (1 (2 (3 4)
+;          /\
+;         /  \
+;        1  (2 (3 4)
+;              /\
+;             /  \
+;            2   (3 4)
+;                  /\
+;                 /  \
+;                3    4
+
+; ========== E2.25
