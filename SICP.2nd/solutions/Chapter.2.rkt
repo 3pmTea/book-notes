@@ -66,6 +66,13 @@
 (define (width i)
   (/ (- (upper-bound i) (lower-bound i)) 2))
 
+;
+(define (accumulate op initial sequence)
+  (if (null? sequence)
+      initial
+      (op (car sequence)
+          (accumulate op initial (cdr sequence)))))
+
 ; ========== E2.1
 
 (define (make-rat-2.1 n d)
@@ -462,3 +469,197 @@
                 (map (lambda (x)
                        (cons (car s) x))
                      rest)))))
+
+; ========== E2.33
+
+(define (map-2.33 p sequence)
+  (accumulate (lambda (x y)
+                (cons (p x) y))
+              '()
+              sequence))
+(define (append-2.33 seq1 seq2)
+  (accumulate cons seq2 seq1))
+(define (length-2.33 sequence)
+  (accumulate (lambda (x y) (+ 1 y)) 0 sequence))
+
+; ========== E2.34
+
+(define (horner-eval x coefficient-sequence)
+  (accumulate (lambda (this-coeff higher-terms)
+                (+ this-coeff (* x higher-terms)))
+              0
+              coefficient-sequence))
+
+; ========== E2.35
+
+; I use a recursion here
+(define (count-leaves-2.35 t)
+  (accumulate +
+              0
+              (map (lambda (x)
+                     (cond ((null? x) 0)
+                           ((pair? x)
+                            (count-leaves-2.35 x))
+                           (else 1))) t)))
+
+; ========== E2.36
+
+(define (accumulate-n op init seqs)
+  (if (null? (car seqs))
+      '()
+      (cons (accumulate op init (map car seqs))
+            (accumulate-n op init (map cdr seqs)))))
+
+; ========== E2.37
+
+(define (dot-product v w)
+  (accumulate + 0 (map * v w)))
+
+(define (matrix-*-vector m v)
+  (map (lambda (x) (dot-product v x)) m))
+
+(define (transpose mat)
+  (accumulate-n cons '() mat))
+
+(define (matrix-*-matrix m n)
+  (let ((cols (transpose n)))
+    (map (lambda (x) (matrix-*-vector cols x)) m)))
+
+; ========== E2.39
+
+(define fold-right accumulate)
+(define (fold-left op initial sequence)
+  (define (iter result rest)
+    (if (null? rest)
+        result
+        (iter (op result (car rest))
+              (cdr rest))))
+  (iter initial sequence))
+
+(define (reverse-2.39-r sequence)
+  (fold-right (lambda (x y)
+                (append y (list x)))
+              '()
+              sequence))
+(define (reverse-2.39-l sequence)
+  (fold-left (lambda (x y)
+               (cons y x))
+             '()
+             sequence))
+
+; ========== E2.40
+
+; helper functions
+(define (enumerate-interval x y)
+  (if (> x y)
+      '()
+      (cons x (enumerate-interval (+ 1 x) y))))
+(define (flatmap proc seq)
+  (accumulate append '() (map proc seq)))
+(define (prime? n)
+  (define (iter i n)
+    (cond ((> (* i i) n) true)
+          ((> (gcd i n) 1) false)
+          (else (iter (+ 1 i) n))))
+  (iter 2 n))
+(define (make-pair-sum pair)
+  (list (car pair) (cadr pair) (+ (car pair) (cadr pair))))
+(define (prime-sum? pair)
+  (prime? (+ (car pair) (cadr pair))))
+
+(define (unique-pairs n)
+  (flatmap (lambda (i)
+         (map (lambda (j)
+                (list i j))
+              (enumerate-interval 1 (- i 1))))
+       (enumerate-interval 1 n)))
+
+(define (prime-sum-pairs n)
+  (map make-pair-sum
+       (filter prime-sum? (unique-pairs n))))
+
+; ========== E2.41
+
+; Solution 1:
+; Generate all triples (i, j, k), where 1 <= i < j < k <= n,
+; filter the triples satisfying i + j + k = s.
+; This solution makes C(n, 3) triples.
+
+(define (sum-to s)
+  (lambda (triple)
+    (= s (+ (car triple)
+            (cadr triple)
+            (caddr triple)))))
+
+(define (list-triples-2.41 n)
+  (flatmap (lambda (i)
+         (flatmap (lambda (j)
+                (map (lambda (k)
+                       (list i j k))
+                     (enumerate-interval (+ 1 j) n)))
+                (enumerate-interval (+ 1 i) n)))
+       (enumerate-interval 1 n)))
+
+(define (solution-2.41-1 n s)
+  (filter (sum-to s) (list-triples-2.41 n)))
+
+; Solution 2:
+; Generate all triples (i, j, s-i-j), where 1 <= i < j <= n,
+; filter the pairs satisfying j < s-i-j <= n.
+; This solution makes C(n, 2) triples.
+
+(define (solution-2.41-2 n s)
+  (define (k-filter triple)
+    (let ((j (cadr triple))
+          (k (caddr triple)))
+      (and (< j k) (<= k n))))
+  (define (list-triples)
+    (flatmap (lambda (i)
+               (map (lambda (j)
+                      (list i j (- (- s i) j)))
+                    (enumerate-interval (+ 1 i) n)))
+             (enumerate-interval 1 n)))
+  (filter k-filter (list-triples)))
+
+; ========== E2.42
+
+; First we determine the form of the result. It may be:
+; Result = list of Solutions
+; a Solution = list of Coordinates
+; Coordinate = (row column)
+;
+; So the output would be (((row1 col1) (row2 col2) ...) ...other solutions)
+(define (queens-2.42 n)
+  (define empty-board '())
+  (define (adjoin-position row col rest)
+    (cons (list row col) rest))
+
+  ; I didn't use k in this filter
+  (define (safe? k positions)
+    (let ((trial (car positions))
+          (trial-row (caar positions))
+          (trial-col (cadar positions))
+          (rest (cdr positions)))
+      (accumulate (lambda (pos result)
+                    (let ((row (car pos))
+                          (col (cadr pos)))
+                      (and (not (= (- trial-row trial-col)
+                                   (- row col)))
+                           (not (= (+ trial-row trial-col)
+                                   (+ row col)))
+                           (not (= trial-row row))
+                           result)))
+                  true
+                  rest)))
+  (define (queen-cols k)
+    (if (= k 0)
+        (list empty-board)
+        (filter (lambda (positions)
+                  (safe? k positions))
+                (flatmap (lambda (rest)
+                           (map (lambda (new-row)
+                                  (adjoin-position
+                                   new-row k rest))
+                                (enumerate-interval 1 n)))
+                         (queen-cols (- k 1))))))
+  (queen-cols n))
