@@ -3,7 +3,7 @@ Structure and Interpretation of Computer Programs
 
 Some notes:
 ---
-I use \<func-name>-<Exercise-No.> as function names if the function name is a built-in name of Racket.
+I use \<func-name>-x.xx if 'func-name' is a built-in name of Racket.
 
 Some useful links:
 ---

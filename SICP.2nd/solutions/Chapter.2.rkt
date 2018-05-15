@@ -66,12 +66,17 @@
 (define (width i)
   (/ (- (upper-bound i) (lower-bound i)) 2))
 
-;
+; list operation
 (define (accumulate op initial sequence)
   (if (null? sequence)
       initial
       (op (car sequence)
           (accumulate op initial (cdr sequence)))))
+
+; symbolic differentiation
+(define (variable? x) (symbol? x))
+(define (same-variable? v1 v2)
+  (and (variable? v1) (variable? v2) (eq? v1 v2)))
 
 ; ========== E2.1
 
@@ -663,3 +668,98 @@
                                 (enumerate-interval 1 n)))
                          (queen-cols (- k 1))))))
   (queen-cols n))
+
+; ========== E2.54
+(define (equal?-2.54 a b)
+  (if (pair? a)
+      (and (pair? b)
+           (equal?-2.54 (car a) (car b))
+           (equal?-2.54 (cdr a) (cdr b)))
+      (and (not (pair? b)) (eq? a b))))
+
+; ========== E2.56
+(define (deriv exp var)
+  (cond ((number? exp) 0)
+        ((variable? exp) (if (same-variable? exp var) 1 0))
+        ((sum? exp) (make-sum (deriv (addend exp) var)
+                              (deriv (augend exp) var)))
+        ((product? exp)
+         (make-sum (make-product (multiplier exp)
+                                 (deriv (multiplicand exp) var))
+                   (make-product (deriv (multiplier exp) var)
+                                 (multiplicand exp))))
+        ((exponentiation? exp)
+         (make-product (make-product (exponent exp)
+                                     (deriv (base exp) var))
+                       (make-exponentiation (base exp)
+                                            (make-sum (exponent exp) -1))))
+        (else
+         (error "unknown expression type: DERIV" exp))))
+
+(define (make-exponentiation base exp)
+  (cond ((not (number? exp)) (error "exponent should be a number"))
+        ((= exp 0) 1)
+        ((= exp 1) base)
+        ((number? base) (expt base exp))
+        (else (list '** base exp))))
+(define (base exp) (cadr exp))
+(define (exponent exp) (caddr exp))
+(define (exponentiation? exp)
+  (and (pair? exp) (eq? (car exp) '**)))
+
+; ========== E2.57
+(define (make-sum a1 a2 . rest-terms)
+  (define (iter constant vars terms)
+    (if (null? terms)
+        (if (= constant 0)
+            (cond ((null? vars) 0)
+                  ((null? (cdr vars)) (car vars))
+                  (else (cons '+ vars)))
+            (cond ((null? vars) constant)
+                  ((null? (cdr vars)) (cons '+ (cons constant vars)))
+                  (else (cons '+ (cons constant vars)))))
+        (let ((term (car terms))
+              (rest (cdr terms)))
+          (if (number? term)
+              (iter (+ term constant) vars rest)
+              (iter constant (cons term vars) rest)))))
+  (iter 0 '() (cons a1 (cons a2 rest-terms))))
+
+(define (=number? exp num) (and (number? exp) (= exp num)))
+
+(define (make-product m1 m2 . rest-factors)
+  (define (iter constant vars factors)
+    (if (= constant 0)
+        0
+        (if (null? factors)
+            (if (= constant 1)
+                (cond ((null? vars) 1)
+                      ((null? (cdr vars)) (car vars))
+                      (else (cons '* vars)))
+                (cond ((null? vars) constant)
+                      ((null? (cdr vars)) (cons '* (cons constant vars)))
+                      (else (cons '* (cons constant vars)))))
+            (let ((factor (car factors))
+                  (rest (cdr factors)))
+              (if (number? factor)
+                  (iter (* factor constant) vars rest)
+                  (iter constant (cons factor vars) rest))))))
+  (iter 1 '() (cons m1 (cons m2 rest-factors))))
+
+(define (sum? x) (and (pair? x) (eq? (car x) '+)))
+(define (addend s) (cadr s))
+(define (augend s)
+  (let ((term (caddr s))
+        (rest (cdddr s)))
+    (if (null? rest)
+        term
+        (cons '+ (cons term rest)))))
+
+(define (product? x) (and (pair? x) (eq? (car x) '*)))
+(define (multiplier p) (cadr p))
+(define (multiplicand p)
+  (let ((factor (caddr p))
+        (rest (cdddr p)))
+    (if (null? rest)
+        factor
+        (cons '* (cons factor rest)))))
