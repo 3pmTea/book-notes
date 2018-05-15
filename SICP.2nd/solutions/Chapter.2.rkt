@@ -763,3 +763,49 @@
     (if (null? rest)
         factor
         (cons '* (cons factor rest)))))
+
+; ========== E2.58
+; a
+(define (deriv-infix exp var)
+  (cond ((number? exp) 0)
+        ((variable? exp) (if (same-variable? exp var) 1 0))
+        ((sum-infix? exp) (make-sum-infix (deriv-infix (addend-infix exp)
+                                                       var)
+                                          (deriv-infix (augend-infix exp)
+                                                       var)))
+        ((product-infix? exp)
+         (make-sum-infix (make-product-infix (multiplier-infix exp)
+                                             (deriv-infix (multiplicand-infix exp)
+                                                          var))
+                         (make-product-infix (multiplicand-infix exp)
+                                             (deriv-infix (multiplier-infix exp)
+                                                          var))))
+        (else
+         (error "unknown expression type: DERIV" exp))))
+
+(define (sum-infix? exp)
+  (and (pair? exp) (pair? (cdr exp)) (eq? (cadr exp) '+)))
+(define (make-sum-infix a b)
+  (cond ((=number? a 0) b)
+        ((=number? b 0) a)
+        ((and (number? a) (number? b)) (+ a b))
+        (else (list a '+ b))))
+(define (addend-infix exp)
+  (car exp))
+(define (augend-infix exp)
+  (caddr exp))
+
+(define (product-infix? exp)
+  (and (pair? exp) (pair? (cdr exp)) (eq? (cadr exp) '*)))
+(define (make-product-infix a b)
+  (cond ((or (=number? a 0) (=number? b 0)) 0)
+        ((=number? a 1) b)
+        ((=number? b 1) a)
+        ((and (number? a) (number? b)) (* a b))
+        (else (list a '* b))))
+(define (multiplier-infix exp)
+  (car exp))
+(define (multiplicand-infix exp)
+  (caddr exp))
+
+; b
