@@ -78,6 +78,82 @@
 (define (same-variable? v1 v2)
   (and (variable? v1) (variable? v2) (eq? v1 v2)))
 
+; sets operation
+(define (element-of-set? x set)
+  (cond ((null? set) false)
+        ((equal? x (car set)) true)
+        (else (element-of-set? x (cdr set)))))
+(define (adjoin-set x set)
+  (if (element-of-set? x set)
+      set
+      (cons x set)))
+(define (intersection-set set1 set2)
+  (cond ((or (null? set1) (null? set2)) '())
+        ((element-of-set? (car set1) set2)
+         (cons (car set1) (intersection-set (cdr set1) set2)))
+        (else (intersection-set (cdr set1) set2))))
+
+; sorted sets operation
+(define (element-of-sortedset? x set)
+  (cond ((null? set) false)
+        ((= x (car set)) true)
+        ((< x (car set)) false)
+        (else (element-of-sortedset? x (cdr set)))))
+(define (intersection-sortedset set1 set2)
+  (if (or (null? set1) (null? set2))
+      '()
+      (let ((x1 (car set1)) (x2 (car set2)))
+        (cond ((= x1 x2)
+               (cons x1 (intersection-sortedset (cdr set1)
+                                                (cdr set2))))
+              ((< x1 x2)
+               (intersection-sortedset (cdr set1) set2))
+              ((< x2 x1)
+               (intersection-sortedset set1 (cdr set2)))))))
+
+; binary tree set
+(define (bt-entry tree) (car tree))
+(define (bt-left-branch tree) (cadr tree))
+(define (bt-right-branch tree) (caddr tree))
+(define (bt-make-tree entry left right)
+  (list entry left right))
+
+(define (tree->list tree)
+  (define (copy-to-list tree result-list)
+    (if (null? tree)
+        result-list
+        (copy-to-list (bt-left-branch tree)
+                      (cons (bt-entry tree)
+                            (copy-to-list
+                             (bt-right-branch tree)
+                             result-list)))))
+  (copy-to-list tree '()))
+
+(define (list->tree elements)
+  (car (partial-tree elements (length elements))))
+
+(define (partial-tree elts n)
+  (if (= n 0)
+      (cons '() elts)
+      (let ((left-size (quotient (- n 1) 2)))
+        (let ((left-result
+               (partial-tree elts left-size)))
+          (let ((left-tree (car left-result))
+                (non-left-elts (cdr left-result))
+                (right-size (- n (+ left-size 1))))
+            (let ((this-entry (car non-left-elts))
+                  (right-result
+                   (partial-tree
+                    (cdr non-left-elts)
+                    right-size)))
+              (let ((right-tree (car right-result))
+                    (remaining-elts
+                     (cdr right-result)))
+                (cons (bt-make-tree this-entry
+                                    left-tree
+                                    right-tree)
+                      remaining-elts))))))))
+
 ; ========== E2.1
 
 (define (make-rat-2.1 n d)
@@ -809,3 +885,53 @@
   (caddr exp))
 
 ; b
+
+; ========== E2.59
+; see http://community.schemewiki.org/?sicp-ex-2.59 for more optimized solutions
+(define (union-set set1 set2)
+  (cond ((null? set1) set2)
+        ((null? set2) set1)
+        ((element-of-set? (car set1) set2)
+         (union-set (cdr set1) set2))
+        (else (union-set (cdr set1) (cons (car set1) set2)))))
+
+; ========== E2.60
+(define (element-of-multiset? x set)
+  (element-of-set? x set))
+
+(define (adjoin-multiset x set)
+  (cons x set))
+
+(define (union-multiset set1 set2)
+  (append set1 set2))
+
+(define (intersection-multiset set1 set2)
+  (intersection-set set1 set2))
+
+; ========== E2.61
+(define (adjoin-sortedset x set)
+  (cond ((null? set) '(x))
+        ((< x (car set)) (cons x set))
+        ((= x (car set)) set)
+        (else (cons (car set) (adjoin-sortedset x (cdr set))))))
+
+; ========== E2.62
+(define (union-sortedset set1 set2)
+  (cond ((null? set1) set2)
+        ((null? set2) set1)
+        ((= (car set1) (car set2)) (cons (car set1)
+                                         (union-sortedset (cdr set1) (cdr set2))))
+        ((< (car set1) (car set2)) (cons (car set1)
+                                         (union-sortedset (cdr set1) set2)))
+        (else (cons (car set2) (union-sortedset set1 (cdr set2))))))
+
+; ========== E2.65
+(define (union-btset set1 set2)
+  (let ((list1 (tree->list set1))
+        (list2 (tree->list set2)))
+    (list->tree (union-sortedset list1 list2))))
+
+(define (intersection-btset set1 set2)
+  (let ((list1 (tree->list set1))
+        (list2 (tree->list set2)))
+    (list->tree (intersection-sortedset list1 list2))))
