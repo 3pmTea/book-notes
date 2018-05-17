@@ -58,3 +58,50 @@
 
 ; ========== E2.68
 
+(define (encode message tree)
+  (if (null? message)
+      '()
+      (append (encode-symbol (car message) tree)
+              (encode (cdr message) tree))))
+
+(define (element-of-set? x set)
+  (cond ((null? set) false)
+        ((eq? x (car set)) true)
+        (else (element-of-set? x (cdr set)))))
+
+(define (encode-symbol symbol tree)
+  (define (encode-symbol-1 current)
+    (cond ((not (element-of-set? symbol (symbols current)))
+           (error "can not encode symbol" symbol))
+          ((leaf? current) '())
+          ((element-of-set? symbol (symbols (left-branch current)))
+           (cons 0 (encode-symbol-1 (left-branch current))))
+          ((element-of-set? symbol (symbols (right-branch current)))
+           (cons 1 (encode-symbol-1 (right-branch current))))
+          (else (error "can not encode symbol" symbol))))
+  (encode-symbol-1 tree))
+
+; ========== E2.69
+
+(define (generate-huffman-tree pairs)
+  (successive-merge (make-leaf-set pairs)))
+
+(define (successive-merge leaves)
+  (cond ((null? leaves) '())
+        ((null? (cdr leaves))    ; single element
+         (car leaves))
+        (else (successive-merge (adjoin-set (make-code-tree (car leaves)
+                                                            (cadr leaves))
+                                            (cddr leaves))))))
+
+; ========== E2.70
+
+(define alphabet-2.70
+  '((A 2) (GET 2) (SHA 3) (WAH 1) (BOOM 1) (JOB 2) (NA 16) (YIP 9)))
+(define message-2.70
+  '(GET A JOB SHA NA NA NA NA NA NA NA NA
+        GET A JOB SHA NA NA NA NA NA NA NA NA
+        WAH YIP YIP YIP YIP YIP YIP YIP YIP YIP
+        SHA BOOM))
+; (length (encode message-2.70 (generate-huffman-tree alphabet-2.70)))
+; => 84
