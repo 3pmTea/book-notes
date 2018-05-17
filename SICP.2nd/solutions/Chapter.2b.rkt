@@ -25,6 +25,7 @@
 (define (variable? x) (symbol? x))
 (define (same-variable? v1 v2)
   (and (variable? v1) (variable? v2) (eq? v1 v2)))
+(define (=number? exp num) (and (number? exp) (= exp num)))
 
 ; ========== E2.73
 
@@ -39,12 +40,28 @@
 
 ; b) derivatives of sums and products
 (define (install-sum-deriv-package)
-  (define (make-sum a b) (list '+ a b))
+  (define (make-sum a b)
+    (cond ((=number? a 0) b)
+          ((=number? b 0) a)
+          ((and (number? a) (number? b)) (+ a b))
+          (else (list '+ a b))))
   (define (addend exp) (car exp))
   (define (augend exp) (cadr exp))
-  (define (deriv exp var)
+  (define (deriv-sum exp var)
     (make-sum (deriv (addend exp) var)
               (deriv (augend exp) var)))
 
-  (put 'deriv '+ deriv)
+  (put 'deriv '+ deriv-sum)
   'done)
+
+(define (install-prod-deriv-package)
+  (define (make-product a b)
+    (cond ((or (=number? a 0) (=number? b 0)) 0)
+          ((=number? a 1) b)
+          ((=number? b 1) a)
+          ((and (number? a) (number? b)) (* a b))
+          (else (list '* a b))))
+  (define (multiplier exp) (car exp))
+  (define (multiplicand exp) (cadr exp))
+  (define (deriv-prod exp var)
+    (get '
