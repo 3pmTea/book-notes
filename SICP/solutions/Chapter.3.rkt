@@ -1,5 +1,7 @@
 #lang racket
 
+(require racket/mpair)
+
 ; util procedures
 
 (define (monte-carlo trials experiment)
@@ -147,3 +149,70 @@
 ; (define a (f-3.8 0)) (define b (f-3.8 1)) (+ a b) -> 0
 ; -- recompile
 ; (define b (f-3.8 1)) (define a (f-3.8 0)) (+ a b) -> 1
+
+; ========== E3.16
+(define (count-mpairs-3.16 x)
+  (if (not (mpair? x))
+      0
+      (+ (count-mpairs-3.16 (mcar x))
+         (count-mpairs-3.16 (mcdr x))
+         1)))
+
+; (count-mpairs-3.16 pair-3-3.16) -> 3
+(define pair-3-3.16
+  (mcons 'a (mcons 'b (mcons 'c 'd))))
+
+; (count-mpairs-3.16 pair-4-3.16) -> 4
+(define pair-4-3.16
+  (let ((pair-a (mcons 'a 'a)))
+    (let ((pair-b (mcons pair-a 'b)))
+      (let ((pair-c (mcons pair-a pair-b)))
+        pair-c))))
+
+; (count-mpairs-3.16 pair-7-3.16) -> 7
+(define pair-7-3.16
+  (let ((pair-a (mcons 'a 'a)))
+    (let ((pair-b (mcons pair-a pair-a)))
+      (let ((pair-c (mcons pair-b pair-b)))
+        pair-c))))
+
+; (count-mpairs-3.16 pair-inf-3.16) -> infinity
+(define pair-inf-3.16
+  (let ((pair-a (mcons 'a 'a)))
+    (let ((pair-b (mcons 'b pair-a)))
+      (let ((pair-c (mcons 'c pair-b)))
+        (begin (set-mcdr! pair-a pair-c)
+               pair-a)))))
+
+; ========== E3.17
+
+(define (count-mpairs-3.17 x)
+  (define visited-pairs (mlist))
+  (define (visited? p)
+    (define (iter li)
+      (cond ((null? li) false)
+            ((eq? (mcar li) p) true)
+            (else (iter (mcdr li)))))
+    (iter visited-pairs))
+  (define (count p)
+    (cond ((not (mpair? p)) 0)
+          ((visited? p) 0)
+          (else
+           (begin (set! visited-pairs (mcons p visited-pairs))
+                  (+ (count (mcar p))
+                     (count (mcdr p))
+                     1)))))
+  (count x))
+
+; ========== E3.18 & E3.19
+(define (cycle-list? x)
+  (define (iter p1 p2)
+    (cond ((null? p1) false)
+          ((null? p2) false)
+          ((null? (mcdr p2)) false)
+          ((eq? p1 p2) true)
+          (else (iter (mcdr p1) (mcdr (mcdr p2))))))
+  (if (null? x)
+      false
+      (iter x (mcdr x))))
+

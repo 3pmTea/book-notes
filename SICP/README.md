@@ -1,4 +1,4 @@
-Structure and Interpretation of Computer Programs
+Structure and Interpretation of Computer Programs (2nd)
 ===
 
 Some useful links:
