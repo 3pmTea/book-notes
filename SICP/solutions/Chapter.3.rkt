@@ -20,6 +20,41 @@
   (let ((range (- high low)))
     (+ low (* (random) range))))
 
+; queue
+(define (front-ptr queue) (mcar queue))
+(define (rear-ptr queue) (mcdr queue))
+(define (set-front-ptr! queue item)
+  (set-mcar! queue item))
+(define (set-rear-ptr! queue item)
+  (set-mcdr! queue item))
+
+(define (empty-queue? queue)
+  (null? (front-ptr queue)))
+
+(define (make-queue) (mcons '() '()))
+
+(define (front-queue queue)
+  (if (empty-queue? queue)
+      (error "FRONT called with an empty queue" queue)
+      (mcar (front-ptr queue))))
+
+(define (insert-queue! queue item)
+  (let ((new-pair (mcons item '())))
+    (cond ((empty-queue? queue)
+           (set-front-ptr! queue new-pair)
+           (set-rear-ptr! queue new-pair)
+           queue)
+          (else
+           (set-mcdr! (rear-ptr queue) new-pair)
+           (set-rear-ptr! queue new-pair)
+           queue))))
+
+(define (delete-queue! queue)
+  (cond ((empty-queue? queue)
+         (error "DELETE! called with an empty queue" queue))
+        (else (set-front-ptr! queue (mcdr (front-ptr queue)))
+              queue)))
+
 ; ========== E3.1
 (define (make-accumulator-3.1 sum)
   (lambda (value)
@@ -216,3 +251,56 @@
       false
       (iter x (mcdr x))))
 
+; ========== E3.21
+(define (print-queue queue)
+  (display (mcar queue)))
+
+; ========== E3.22
+(define (make-queue-3.22)
+  (let ((front-ptr '())
+        (rear-ptr '()))
+    (define (empty-queue?) (null? front-ptr))
+    (define (front-queue)
+      (if (empty-queue?)
+          (error "FRONT called with an empty queue")
+          front-ptr))
+    (define (insert-queue! item)
+      (let ((new-pair (mcons item '())))
+        (cond ((empty-queue?)
+               (set! front-ptr new-pair)
+               (set! rear-ptr new-pair)
+               dispatch)
+              (else
+               (set-mcdr! rear-ptr new-pair)
+               (set! rear-ptr new-pair)
+               dispatch))))
+    (define (delete-queue!)
+      (cond ((empty-queue?)
+             (error "DELETE! called with an empty queue"))
+            (else (set! front-ptr (mcdr front-ptr)) dispatch)))
+    (define (print-queue) (display front-ptr))
+    (define (dispatch m)
+      (cond ((eq? m 'empty?) empty-queue?)
+            ((eq? m 'front) front-queue)
+            ((eq? m 'insert) insert-queue!)
+            ((eq? m 'delete) delete-queue!)
+            ((eq? m 'print) print-queue)
+            (else (error "Unknown message passed to queue"))))
+    dispatch))
+
+; ========== E3.23
+; deque element structure: (mlist data prev next)
+; or equivalently (mcons data (mcons prev next))
+
+; constructor
+(define (make-deque) (mcons '() '()))
+
+; selectors
+(define (front-deque q) (mcar q))
+(define (rear-deque q) (mcdr q))
+
+; predicate
+(define (empty-deque? q) (eq? (front-deque q) '()))
+
+; mutators
+(define (front-insert-deque! q item)
