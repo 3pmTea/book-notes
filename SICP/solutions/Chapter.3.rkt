@@ -289,18 +289,112 @@
     dispatch))
 
 ; ========== E3.23
-; deque element structure: (mlist data prev next)
+; deque node structure: (mlist data prev next)
 ; or equivalently (mcons data (mcons prev next))
+
+; util - node constructor
+(define (make-deque-node item) (mlist item '() '()))
+
+; util - node selectors
+(define (node-pointers node) (mcdr node))
+(define (node-data node) (mcar node))
+(define (next-node node) (mcdr (node-pointers node)))
+(define (prev-node node) (mcar (node-pointers node)))
+
+; util - node mutators
+(define (set-prev-node! node prev-node)
+  (set-mcar! (node-pointers node) prev-node))
+(define (set-next-node! node next-node)
+  (set-mcdr! (node-pointers node) next-node))
+
+; util - deque mutators
+(define (set-front-node! deque node)
+  (set-mcar! deque node))
+(define (set-rear-node! deque node)
+  (set-mcdr! deque node))
+
+; util - deque selectors
+(define (front-node q) (mcar q))
+(define (rear-node q) (mcdr q))
 
 ; constructor
 (define (make-deque) (mcons '() '()))
 
 ; selectors
-(define (front-deque q) (mcar q))
-(define (rear-deque q) (mcdr q))
+(define (front-deque q)
+  (if (empty-deque? q)
+      (error "Can't access front of an empty deque")
+      (mcar (front-node q))))
+(define (rear-deque q)
+  (if (empty-deque? q)
+      (error "Can't access rear of an empty deque")
+      (mcar (rear-node q))))
 
 ; predicate
-(define (empty-deque? q) (eq? (front-deque q) '()))
+(define (empty-deque? q)
+  (and (eq? (front-node q) '())
+       (eq? (rear-node q) '())))
+
+; iterator
+(define (print-deque q)
+  (define (iter node)
+    (cond ((eq? node (rear-node q))
+           (display (node-data node)))
+          (else
+           (display (node-data node))
+           (display " ")
+           (iter (next-node node)))))
+  (display "{")
+  (cond ((empty-deque? q) )
+        (else
+         (iter (front-node q))))
+  (display "}"))
 
 ; mutators
 (define (front-insert-deque! q item)
+  (let ((new-node (make-deque-node item)))
+    (cond ((empty-deque? q)
+           (set-front-node! q new-node)
+           (set-rear-node! q new-node)
+           q)
+          (else
+           (set-prev-node! (front-node q) new-node)
+           (set-next-node! new-node (front-node q))
+           (set-front-node! q new-node)
+           q))))
+
+(define (rear-insert-deque! q item)
+  (let ((new-node (make-deque-node item)))
+    (cond ((empty-deque? q)
+           (set-front-node! q new-node)
+           (set-rear-node! q new-node)
+           q)
+          (else
+           (set-prev-node! new-node (rear-node q))
+           (set-next-node! (rear-node q) new-node)
+           (set-rear-node! q new-node)
+           q))))
+
+(define (front-delete-deque! q)
+  (if (empty-deque? q)
+      (error "Can't delete from an empty deque")
+      (let ((front (front-node q)))
+        (cond ((eq? (rear-node q) front)
+               (set-front-node! q '())
+               (set-rear-node! q '())
+               q)
+              (else
+               (set-front-node! q (next-node front))
+               q)))))
+
+(define (rear-delete-deque! q)
+  (if (empty-deque? q)
+      (error "Can't delete from an empty deque")
+      (let ((rear (rear-node q)))
+        (cond ((eq? (front-node q) rear)
+               (set-front-node! q '())
+               (set-rear-node! q '())
+               q)
+              (else
+               (set-rear-node! q (prev-node rear))
+               q)))))
