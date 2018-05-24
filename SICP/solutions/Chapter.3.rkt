@@ -20,6 +20,11 @@
   (let ((range (- high low)))
     (+ low (* (random) range))))
 
+(define (assoc key records)
+  (cond ((null? records) false)
+        ((eq? key (mcar (car records))) (car records))
+        (else (assoc key (cdr records)))))
+
 ; queue
 (define (front-ptr queue) (mcar queue))
 (define (rear-ptr queue) (mcdr queue))
@@ -398,3 +403,28 @@
               (else
                (set-rear-node! q (prev-node rear))
                q)))))
+
+; ==========E3.24
+(define (make-table-3.24 same-key?)
+  (let ((table (mlist '*table*)))
+    (define (assoc key records)
+      (cond ((null? records) false)
+            ((same-key? key (mcar (car records))) (car records))
+            (else (assoc key (cdr records)))))
+    (define (lookup key)
+      (let ((record (assoc key (mcdr table))))
+        (if record
+            (mcdr record)
+            false)))
+    (define (insert! key value)
+      (let ((record (assoc key (mcdr table))))
+        (if record
+            (set-mcdr! record value)
+            (set-mcdr! table (cons (mcons key value)
+                                   (mcdr table)))))
+      'ok)
+    (define (dispatch m)
+      (cond ((eq? m 'lookup) lookup)
+            ((eq? m 'insert!) insert!)
+            (else (error "Unknown operation on table" m))))
+    dispatch))
