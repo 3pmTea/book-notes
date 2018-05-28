@@ -271,3 +271,84 @@
                         (* 5 (car x) (cadr x))))
                    integers
                    integers)))
+
+; ========== E3.71
+(define (cube x) (* x x x))
+
+(define (cube-sum x y) (+ (cube x) (cube y)))
+
+(define pairs-3.71
+  (stream-filter (lambda (x)
+                   (<= (car x) (cadr x)))
+                 (weighted-pairs (lambda (x)
+                                   (cube-sum (car x) (cadr x)))
+                                 integers
+                                 integers)))
+
+(define ramanujan-numbers
+  (let ((cube-sum-stream (stream-map
+                          (lambda (x)
+                            (cube-sum (car x) (cadr x)))
+                          pairs-3.71)))
+    (define (filter-duplicate s)
+      (let ((s0 (stream-ref s 0))
+            (s1 (stream-ref s 1))
+            (s2 (stream-ref s 2)))
+        (if (and (= s0 s1)
+                 (< s1 s2))
+            (stream-cons s0 (filter-duplicate (stream-cdr (stream-cdr s))))
+            (filter-duplicate (stream-cdr s)))))
+    (filter-duplicate cube-sum-stream)))
+
+; ========== E3.72
+(define (square-sum x y) (+ (square x) (square y)))
+
+(define (pair-square-sum x) (square-sum (car x) (cadr x)))
+
+(define pairs-3.72
+  (stream-filter (lambda (x)
+                   (<= (car x) (cadr x)))
+                 (weighted-pairs (lambda (x)
+                                   (square-sum (car x) (cadr x)))
+                                 integers
+                                 integers)))
+
+(define (filter-3 s)
+  (let ((s0 (stream-ref s 0))
+        (s1 (stream-ref s 1))
+        (s2 (stream-ref s 2))
+        (s3 (stream-ref s 3)))
+    (let ((sq-sum0 (pair-square-sum s0))
+          (sq-sum1 (pair-square-sum s1))
+          (sq-sum2 (pair-square-sum s2))
+          (sq-sum3 (pair-square-sum s3)))
+      (if (and (= sq-sum0 sq-sum1)
+               (= sq-sum1 sq-sum2)
+               (< sq-sum2 sq-sum3))
+          (stream-cons (list sq-sum0 s0 s1 s2)
+                       (filter-3 (stream-cdr (stream-cdr (stream-cdr s)))))
+          (filter-3 (stream-cdr s))))))
+
+(define square-sums-3.72 (filter-3 pairs-3.72))
+
+; ========== E3.74
+(define (sign-change-detector next prev)
+  (cond ((and (>= prev 0) (< next 0)) -1)
+        ((and (< prev 0) (>= next 0)) 1)
+        (else 0)))
+
+(define (make-zero-crossings sense-data)
+  (stream-map-3.50 sign-change-detector
+                   sense-data
+                   (stream-cons 0 sense-data)))
+
+(define (test-3.74)
+  (display-stream
+   (make-zero-crossings
+    (stream 1 2 1.5 1 0.5 -0.1 -2 -3 -2 -0.5 0.2 3 4))
+   13))
+; expected: (0 0 0 0 0 -1 0 0 0 0 1 0 0)
+
+; ========== E3.76
+(define (smooth s)
+  (stream-map-3.50 average s (stream-cdr s)))
