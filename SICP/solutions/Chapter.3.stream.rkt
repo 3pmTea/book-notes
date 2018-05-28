@@ -141,3 +141,133 @@
   guesses)
 (define (sqrt-3.64 x tolerance)
   (stream-limit (sqrt-stream x) tolerance))
+
+; ========== E3.65
+(define (square x) (* x x))
+
+(define (euler-transform s)
+  (let ((s0 (stream-ref s 0))
+        (s1 (stream-ref s 1))
+        (s2 (stream-ref s 2)))
+    (stream-cons (- s2 (/ (square (- s2 s1))
+                          (+ s0 (* -2 s1) s2)))
+                 (euler-transform (stream-cdr s)))))
+
+(define (make-tableau transform s)
+  (stream-cons s (make-tableau transform (transform s))))
+
+(define (accelerated-sequence transform s)
+  (stream-map stream-car (make-tableau transform s)))
+
+(define (ln2-summands n)
+  (stream-cons (/ 1.0 n)
+               (stream-map - (ln2-summands (+ 1 n)))))
+
+(define ln2-stream (partial-sums (ln2-summands 1)))
+
+(define ln2-stream-acc (accelerated-sequence euler-transform ln2-stream))
+
+; ========== E3.67
+; solution 1
+(define (interleave s1 s2)
+  (if (stream-null? s1)
+      s2
+      (stream-cons (stream-car s1)
+                   (interleave s2 (stream-cdr s1)))))
+
+(define (upper-pairs s t)
+  (stream-cons
+   (list (stream-car s) (stream-car t))
+   (interleave
+    (stream-map (lambda (x) (list (stream-car s) x))
+                (stream-cdr t))
+    (upper-pairs (stream-cdr s) (stream-cdr t)))))
+
+(define (flip-pairs s)
+  (stream-map (lambda (x) (list (cadr x) (car x))) s))
+
+(define integer-pairs
+  (let ((upper (upper-pairs integers integers)))
+    (interleave upper
+                (stream-filter (lambda (x) (> (car x) (cadr x))) (flip-pairs upper)))))
+
+; solution 2
+; uploaded to http://community.schemewiki.org/?sicp-ex-3.68
+(define (pairs s t)
+  (stream-cons
+   (list (stream-car s) (stream-car t))
+   (interleave
+    (stream-map (lambda (x) (list (stream-car s) x))
+                (stream-cdr t))
+    (pairs (stream-cdr s) t))))
+
+; ========== E3.69
+; a not effecient version, which requires 1G RAM to compute only 3 triples (3 4 5) (6 8 10) (5 12 13)
+(define (stream-combine make-element s t)
+  (stream-cons
+   (make-element (stream-car s) (stream-car t))
+   (interleave
+    (stream-map (lambda (x) (make-element (stream-car s) x))
+                (stream-cdr t))
+    (stream-combine make-element (stream-cdr s) t))))
+
+(define (triples s t u)
+  (let ((all-triples (stream-combine (lambda (x y) (cons x y))
+                                     s
+                                     (stream-combine (lambda (x y)
+                                                       (list x y))
+                                                     t
+                                                     u))))
+    (stream-filter (lambda (x)
+                     (and (< (car x) (cadr x))
+                          (< (cadr x) (caddr x))))
+                   all-triples)))
+
+(define pythagorean-triples
+  (stream-filter (lambda (x) (= (+ (square (car x)) (square (cadr x)))
+                                (square (caddr x))))
+                 (triples integers integers integers)))
+
+; ========== E3.70
+(define (merge-weighted weight s t)
+  (cond ((stream-null? s) t)
+        ((stream-null? t) s)
+        (else
+         (let ((ws (weight (stream-car s)))
+               (wt (weight (stream-car t))))
+           (if (<= ws wt)
+               (stream-cons (stream-car s)
+                            (merge-weighted weight (stream-cdr s) t))
+               (stream-cons (stream-car t)
+                            (merge-weighted weight s (stream-cdr t))))))))
+
+(define (weighted-pairs weight s t)
+  (stream-cons
+   (list (stream-car s) (stream-car t))
+   (merge-weighted weight
+                   (stream-map (lambda (x) (list (stream-car s) x))
+                               (stream-cdr t))
+                   (weighted-pairs weight (stream-cdr s) t))))
+
+; a
+(define pairs-a (stream-filter
+                 (lambda (x) (<= (car x) (cadr x)))
+                 (weighted-pairs (lambda (x)
+                                   (+ (car x) (cadr x)))
+                                 integers
+                                 integers)))
+;b
+(define pairs-b
+  (stream-filter
+   (lambda (x)
+     (let ((prod (* (car x) (cadr x))))
+       (not (or (> (car x) (cadr x))
+                (= (remainder prod 2) 0)
+                (= (remainder prod 3) 0)
+                (= (remainder prod 5) 0)))))
+   (weighted-pairs (lambda (x)
+                     (+ (* 2 (car x))
+                        (* 3 (cadr x))
+                        (* 5 (car x) (cadr x))))
+                   integers
+                   integers)))
