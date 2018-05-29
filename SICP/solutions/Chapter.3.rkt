@@ -137,10 +137,10 @@
   (estimate-integral in-unit-circle? -1.0 1.0 -1.0 1.0 100000))
 
 ; ========== E3.6
-(define (rand-3.5 msg)
+(define (rand-3.6 msg)
   (cond ((eq? msg 'generate) (random))
         ((eq? msg 'reset) (lambda (seed) (random-seed seed)))
-        (else (error "Unknown request: RAND-3.5" msg))))
+        (else (error "Unknown request: RAND-3.6" msg))))
 
 ; ========== E3.7
 (define (make-account-3.7 balance passwd)
