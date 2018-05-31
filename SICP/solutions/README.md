@@ -1,6 +1,6 @@
 How to test and play with the code
 ---
-Open [DrRacket.exe](https://racket-lang.org/), and copy & paste all the code in one of these files into the definitions area, then click the "Run" button.
+In [DrRacket.exe](https://racket-lang.org/), select File -> Open, locate these files, open one of them, then click "Run".
 
 *Chapter.2.pict-lang.rkt* requires the package 'sicp' to run, which can be installed by following [these steps](https://docs.racket-lang.org/sicp-manual/index.html).
 
