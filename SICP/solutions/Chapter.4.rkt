@@ -1,6 +1,16 @@
 #lang racket
 (require "include/interpreter.rkt")
 
+; "eval" is redefined in this file,
+; so the "driver-loop" needs to be redefined, too.
+(define (driver-loop)
+  (prompt-for-input input-prompt)
+  (let ((input (read)))
+    (let ((output (eval input the-global-environment)))
+      (announce-output output-prompt)
+      (user-print output)))
+  (driver-loop))
+
 ; ========== E4.1
 (define (list-of-values-ltr exps env)
   (if (no-operands? exps)
@@ -24,14 +34,14 @@
   (hash-set! *op-table* (list op type) proc))
 
 (define (get op type)
-  (hash-ref *op-table* (list op type) '()))
+  (hash-ref *op-table* (list op type) false))
 
-(define (eval-4.2 exp env)
+(define (eval exp env)
   (cond ((self-evaluating? exp) exp)
         ((variable? exp) (lookup-variable-value exp env))
         ((get 'eval (car exp)) ((get 'eval (car exp)) exp env))
-        ((application? exp) (apply (eval (operator exp) env)
-                                   (list-of-values (operands exp) env)))
+        ((application? exp) (~apply (eval (operator exp) env)
+                                    (list-of-values (operands exp) env)))
         (else (error "Unknown expression type: EVAL" exp))))
 
 (put 'eval 'quote (lambda (exp env) (text-of-quotation exp)))
@@ -127,7 +137,7 @@
   (let ((args (iter let-var (let-args exp)))
         (params (iter let-exp (let-args exp))))
     (make-application
-     (make-lambda args let-body)
+     (make-lambda args (let-body exp))
      params)))
 
 (define (eval-let exp env)
