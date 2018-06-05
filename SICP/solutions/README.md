@@ -6,9 +6,9 @@ In [DrRacket.exe](https://racket-lang.org/), select File -> Open, locate these f
 
 Some notes:
 ---
-I use \<func-name>-x.xx if 'func-name' is a built-in name of Racket.
+* I use \<func-name>-x.xx if 'func-name' is a built-in name of Racket.
 
-My contributions to [schemewiki](http://community.schemewiki.org/):
+My contributions to [schemewiki](http://community.schemewiki.org/?sicp-solutions):
 ---
 [E2.42](http://community.schemewiki.org/?sicp-ex-2.42),
 [E3.30](http://community.schemewiki.org/?sicp-ex-3.30),

@@ -1,5 +1,6 @@
 #lang racket
 (require "include/interpreter.rkt")
+(require "include/analyzer.rkt")
 (require racket/mpair)
 
 ; dispatching utils
@@ -12,7 +13,7 @@
   (hash-ref *op-table* (list op type) false))
 
 
-; "eval" is redefined in this file,
+; "eval" is redefined with data-directed style in this file,
 ; so the "driver-loop", "~apply" and "eval-sequence" needs to be redefined, too.
 (define (driver-loop)
   (prompt-for-input input-prompt)
@@ -41,6 +42,24 @@
         (else
          (eval (first-exp exps) env)
          (eval-sequence (rest-exps exps) env))))
+
+; redefine "analyze" with data-directed style to make it extensible
+(define (analyze exp)
+  (cond ((self-evaluating? exp) (analyze-self-evaluating exp))
+        ((variable? exp) (analyze-variable exp))
+        ((get 'analyze (car exp)) ((get 'analyze (car exp)) exp))
+        ((application? exp) (analyze-application exp))
+        (else (error "Unknown expression type: ANALYZE" exp))))
+
+(put 'analyze 'quote analyze-quoted)
+(put 'analyze 'set! analyze-assignment)
+(put 'analyze 'define analyze-definition)
+(put 'analyze 'if analyze-if)
+(put 'analyze 'lambda analyze-lambda)
+(put 'analyze 'begin (lambda (exp)
+                       (analyze-sequence (begin-actions exp))))
+(put 'analyze 'cond (lambda (exp)
+                      (analyze (cond->if exp))))
 
 ; ========== E4.1
 (define (list-of-values-ltr exps env)
@@ -333,3 +352,6 @@
      (if (= n 0) false (ev? ev? od? (- n 1))))))
 
 ; ========== E4.21
+(define (analyze-let exp)
+  (analyze (let->combination exp)))
+(put 'analyze 'let analyze-let)

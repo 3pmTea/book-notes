@@ -1,8 +1,10 @@
 #lang racket
-
+(require racket/mpair)
 (require "interpreter.rkt")
 
-(define (eval exp env) ((analyze exp) env))
+(provide (all-defined-out))
+
+; (define (eval exp env) ((analyze exp) env))
 
 (define (analyze exp)
   (cond ((self-evaluating? exp) (analyze-self-evaluating exp))
@@ -54,17 +56,29 @@
         (bproc (analyze-sequence (lambda-body exp))))
     (lambda (env) (make-procedure vars bproc env))))
 
+;(define (analyze-sequence exps)
+;  (define (sequentially proc1 proc2)
+;    (lambda (env) (proc1 env) (proc2 env)))
+;  (define (loop first-proc rest-procs)
+;    (if (null? rest-procs)
+;        first-proc
+;        (loop (sequentially first-proc (car rest-procs))
+;              (cdr rest-procs))))
+;  (let ((procs (map analyze exps)))
+;    (if (null? procs) (error "Empty sequence: ANALYZE")
+;        (loop (car procs) (cdr procs)))))
+
 (define (analyze-sequence exps)
-  (define (sequentially proc1 proc2)
-    (lambda (env) (proc1 env) (proc2 env)))
-  (define (loop first-proc rest-procs)
-    (if (null? rest-procs)
-        first-proc
-        (loop (sequentially first-proc (car rest-procs))
-              (cdr rest-procs))))
+  (define (execute-sequence procs env)
+    (cond ((null? (cdr procs))
+           ((car procs) env))
+          (else
+           ((car procs) env)
+           (execute-sequence (cdr procs) env))))
   (let ((procs (map analyze exps)))
-    (if (null? procs) (error "Empty sequence: ANALYZE")
-        (loop (car procs) (cdr procs)))))
+    (if (null? procs)
+        (error "Empty sequence: ANALYZE")
+        (lambda (env) (execute-sequence procs env)))))
 
 (define (analyze-application exp)
   (let ((fproc (analyze (operator exp)))
@@ -82,7 +96,7 @@
          ((procedure-body proc)
           (extend-environment
            (procedure-parameters proc)
-           args
+           (list->mlist args)
            (procedure-environment proc))))
         (else
          (error "Unknown procedure type: EXECUTE-APPLICATION"
