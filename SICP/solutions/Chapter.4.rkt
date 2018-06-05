@@ -1,8 +1,19 @@
 #lang racket
 (require "include/interpreter.rkt")
+(require racket/mpair)
+
+; dispatching utils
+(define *op-table* (make-hash))
+
+(define (put op type proc)
+  (hash-set! *op-table* (list op type) proc))
+
+(define (get op type)
+  (hash-ref *op-table* (list op type) false))
+
 
 ; "eval" is redefined in this file,
-; so the "driver-loop" needs to be redefined, too.
+; so the "driver-loop", "~apply" and "eval-sequence" needs to be redefined, too.
 (define (driver-loop)
   (prompt-for-input input-prompt)
   (let ((input (read)))
@@ -10,6 +21,26 @@
       (announce-output output-prompt)
       (user-print output)))
   (driver-loop))
+
+(define (~apply procedure arguments)
+  (cond ((primitive-procedure? procedure)
+         (apply-primitive-procedure procedure arguments))
+        ((compound-procedure? procedure)
+         (eval-sequence
+          (procedure-body procedure)
+          (extend-environment
+           (procedure-parameters procedure)
+           (list->mlist arguments)
+           (procedure-environment procedure))))
+        (else
+         (error "Unknown procedure type: APPLY" procedure))))
+
+(define (eval-sequence exps env)
+  (cond ((last-exp? exps)
+         (eval (first-exp exps) env))
+        (else
+         (eval (first-exp exps) env)
+         (eval-sequence (rest-exps exps) env))))
 
 ; ========== E4.1
 (define (list-of-values-ltr exps env)
@@ -27,15 +58,6 @@
           (cons first-value rest-values)))))
 
 ; ========== E4.3
-; dispatching utils
-(define *op-table* (make-hash))
-
-(define (put op type proc)
-  (hash-set! *op-table* (list op type) proc))
-
-(define (get op type)
-  (hash-ref *op-table* (list op type) false))
-
 (define (eval exp env)
   (cond ((self-evaluating? exp) exp)
         ((variable? exp) (lookup-variable-value exp env))
@@ -232,3 +254,82 @@
                 (if (null? vars)
                     (add-binding-to-frame! var val (first-frame env))
                     (set-mcar! vals val)))))
+
+; ========== E4.16
+; a
+(define (lookup-variable-value var env)
+  (define (env-loop env)
+    (define (scan vars vals)
+      (cond ((null? vars)
+             (env-loop (enclosing-environment env)))
+            ((eq? var (car vars)) (mcar vals))
+            (else (scan (cdr vars) (mcdr vals)))))
+    (if (eq? env the-empty-environment)
+        (error "Unbound variable" var)
+        (let ((frame (first-frame env)))
+          (scan (frame-variables frame)
+                (frame-values frame)))))
+  (let ((value (env-loop env)))
+    (if (eq? value '*unassigned*)
+        (error "Variable unassigned")
+        value)))
+
+; b
+(define (make-assignment var val) (cons 'set! (list var val)))
+
+(define (scan-out-defines body-in)
+  (let ((defines (filter definition? body-in)))
+    (if (null? defines)
+        body-in
+        (let ((inits (map (lambda (def)
+                            (list (definition-variable def) ''*unassigned))
+                          defines))
+              (assigns (map (lambda (def)
+                              (make-assignment
+                               (definition-variable def)
+                               (definition-value def)))
+                            defines))
+              (body (filter (lambda (x)
+                              (not (definition? x)))
+                            body-in)))
+          (list (make-let inits (append assigns body)))))))
+
+; c
+(define (make-procedure parameters body env)
+  (list 'procedure parameters (scan-out-defines body) env))
+
+; ========== E4.20
+(define (letrec->let exp)
+  (let ((bindings (let-args exp)))
+    (make-let (map (lambda (def)
+                     (list (let-var def) ''*unassigned*))
+                   bindings)
+              (append (map (lambda (def)
+                             (make-assignment (let-var def)
+                                              (let-exp def)))
+                           bindings)
+                      (let-body exp)))))
+
+(define (eval-letrec exp env)
+  (eval (letrec->let exp) env))
+(put 'eval 'letrec eval-letrec)
+
+; ========== E4.21
+; a
+(define fib-4.21
+  (lambda (n)
+    ((lambda (fib) (fib fib n))
+     (lambda (f k) (if (or (= k 0) (= k 1))
+                       1
+                       (+ (f f (- k 1))
+                          (f f (- k 2))))))))
+
+; b
+(define (f-4.21 x)
+  ((lambda (even? odd?) (even? even? odd? x))
+   (lambda (ev? od? n)
+     (if (= n 0) true (od? ev? od? (- n 1))))
+   (lambda (ev? od? n)
+     (if (= n 0) false (ev? ev? od? (- n 1))))))
+
+; ========== E4.21
