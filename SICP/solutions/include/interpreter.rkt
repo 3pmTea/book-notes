@@ -98,7 +98,8 @@
                      (sequence->exp (cond-actions first))
                      (expand-clauses rest))))))
 
-;;
+; === Region begin - evaluation strategy implementation
+
 (define (eval exp env)
   (cond ((self-evaluating? exp) exp)
         ((variable? exp) (lookup-variable-value exp env))
@@ -160,6 +161,8 @@
     (eval (definition-value exp) env)
     env)
   'ok)
+
+; === Region end - evaluation strategy implementation
 
 
 (define (true? x) (not (eq? x false)))
@@ -274,9 +277,9 @@
       (user-print output)))
   (driver-loop))
 (define (prompt-for-input string)
-  (newline) (newline) (display string) (newline))
-(define (announce-output string)
   (newline) (display string) (newline))
+(define (announce-output string)
+  (display string) (newline))
 (define (user-print object)
   (if (compound-procedure? object)
       (display (list 'compound-procedure

@@ -351,7 +351,7 @@
    (lambda (ev? od? n)
      (if (= n 0) false (ev? ev? od? (- n 1))))))
 
-; ========== E4.21
+; ========== E4.22
 (define (analyze-let exp)
   (analyze (let->combination exp)))
 (put 'analyze 'let analyze-let)
