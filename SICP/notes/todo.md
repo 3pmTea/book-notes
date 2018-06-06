@@ -1,0 +1,2 @@
+* [Using closures for code generation](http://www.iro.umontreal.ca/~feeley/papers/FeeleyLapalmeCL87.pdf) introduced in Ch 4.1.7
+* [Why functional programming matters](https://www.cs.kent.ac.uk/people/staff/dat/miranda/whyfp90.pdf) and "lazy trees" introduced in Ch 4.2.3
