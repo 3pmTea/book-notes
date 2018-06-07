@@ -15,3 +15,4 @@ My contributions to [schemewiki](http://community.schemewiki.org/?sicp-solutions
 [E3.67](http://community.schemewiki.org/?sicp-ex-3.67),
 [E4.7](http://community.schemewiki.org/?sicp-ex-4.7),
 [E4.8](http://community.schemewiki.org/?sicp-ex-4.8),
+[E4.42](http://community.schemewiki.org/?sicp-ex-4.42),

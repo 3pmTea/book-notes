@@ -1,0 +1,96 @@
+; ========== pre-defined procedures
+(define (require p) (if (not p) (amb)))
+
+(define (distinct? items)
+  (cond ((null? items) true)
+        ((null? (cdr items)) true)
+        ((member (car items) (cdr items)) false)
+        (else (distinct? (cdr items)))))
+
+;; The logic puzzle example
+(define (multiple-dwelling)
+  (let ((baker (amb 1 2 3 4 5))
+        (cooper (amb 1 2 3 4 5))
+        (fletcher (amb 1 2 3 4 5))
+        (miller (amb 1 2 3 4 5))
+        (smith (amb 1 2 3 4 5)))
+    (require
+      (distinct? (list baker cooper fletcher miller smith)))
+    (require (not (= baker 5)))
+    (require (not (= cooper 1)))
+    (require (not (= fletcher 5)))
+    (require (not (= fletcher 1)))
+    (require (> miller cooper))
+    (require (not (= (abs (- smith fletcher)) 1)))
+    (require (not (= (abs (- fletcher cooper)) 1)))
+    (list (list 'baker baker)
+          (list 'cooper cooper)
+          (list 'fletcher fletcher)
+          (list 'miller miller)
+          (list 'smith smith))))
+
+; ========== E4.35
+(define (an-integer-between low high)
+  (require (<= low high))
+  (amb low (an-integer-between (+ low 1) high)))
+
+; for test:
+(define (a-pythagorean-triple-between low high)
+  (let ((i (an-integer-between low high)))
+    (let ((j (an-integer-between i high)))
+      (let ((k (an-integer-between j high)))
+        (require (= (+ (* i i) (* j j)) (* k k)))
+        (list i j k)))))
+
+; ========== E4.36
+(define (an-integer-starting-from n)
+  (amb n (an-integer-starting-from (+ n 1))))
+
+(define (all-pythagorean-triples)
+  (let ((sum (an-integer-starting-from 3)))
+    (let ((i (an-integer-between 1 (/ sum 3))))
+      (let ((j (an-integer-between i (/ sum 2))))
+        (let ((k (- sum i j)))
+          (require (<= j k))
+          (require (= (+ (* i i) (* j j)) (* k k)))
+          (list i j k))))))
+
+; ========== E4.40
+(define (multiple-dwellin-4.40)
+  (let ((cooper (amb 2 3 4 5))
+        (miller (amb 3 4 5)))
+    (require (> miller cooper))
+    (let ((fletcher (amb 2 3 4)))
+      (require (not (= (abs (- fletcher cooper)) 1)))
+      (let ((smith (amb 1 2 3 4 5)))
+        (require (not (= (abs (- smith fletcher)) 1)))
+        (let ((baker (amb 1 2 3 4)))
+          (require
+            (distinct? (list baker cooper fletcher miller smith)))
+          (list (list 'baker baker)
+                (list 'cooper cooper)
+                (list 'fletcher fletcher)
+                (list 'miller miller)
+                (list 'smith smith)))))))
+
+; ========== E4.42
+
+(define (liars)
+  (define (xor p q)
+    (if p (not q) q))
+  (let ((betty (amb 1 2 3 4 5))
+        (ethel (amb 1 2 3 4 5))
+        (joan (amb 1 2 3 4 5))
+        (kitty (amb 1 2 3 4 5))
+        (mary (amb 1 2 3 4 5)))
+    (require (distinct? (list betty ethel joan kitty mary)))
+    (require (xor (= kitty 2) (= betty 3)))
+    (require (xor (= ethel 1) (= joan 2)))
+    (require (xor (= joan 3) (= ethel 5)))
+    (require (xor (= kitty 2) (= mary 4)))
+    (require (xor (= mary 4) (= betty 1)))
+    (list (list 'betty betty)
+          (list 'ethel ethel)
+          (list 'joan joan)
+          (list 'kitty kitty)
+          (list 'mary mary))))
