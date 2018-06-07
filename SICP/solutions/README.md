@@ -4,7 +4,7 @@ In [DrRacket.exe](https://racket-lang.org/), select File -> Open, locate these f
 
 *Chapter.2.pict-lang.rkt* requires the package 'sicp' to run, which can be installed by following [these steps](https://docs.racket-lang.org/sicp-manual/index.html).
 
-The code in *Chapter.4c.rkt* can't run directly in DrRacket. A nondeterministic interpreter, which supports "amb" is required. To test these code, load "include/nondeterministic.rkt" in DrRacket, call (driver-loop), and copy & paste the procedure definitions into the input area.
+The code in *Chapter.4c.rkt* can't run directly in DrRacket. A nondeterministic interpreter, which supports "amb", is required. To test these code, load "include/nondeterministic.rkt" in DrRacket, call (driver-loop), and copy & paste the procedure definitions into the input area.
 
 Some notes:
 ---
