@@ -7,6 +7,23 @@
         ((member (car items) (cdr items)) false)
         (else (distinct? (cdr items)))))
 
+(define (cadr x) (car (cdr x)))
+
+(define (map f l)
+  (if (null? l)
+      '()
+      (cons (f (car l)) (map f (cdr l)))))
+
+(define (accumulate f init-value l)
+  (if (null? l)
+      init-value
+      (f (car l) (accumulate f init-value (cdr l)))))
+
+(define (first-of predicate l)
+  (cond ((null? l) false)
+        ((predicate (car l)) (car l))
+        (else (first-of predicate (cdr l)))))
+
 ;; The logic puzzle example
 (define (multiple-dwelling)
   (let ((baker (amb 1 2 3 4 5))
@@ -74,7 +91,6 @@
                 (list 'smith smith)))))))
 
 ; ========== E4.42
-
 (define (liars)
   (define (xor p q)
     (if p (not q) q))
@@ -94,3 +110,61 @@
           (list 'joan joan)
           (list 'kitty kitty)
           (list 'mary mary))))
+
+; ========== E4.43
+(define (yacht-puzzle)
+  (define (daughter-of father) (car father))
+  (define (yacht-of father) (car (cdr father)))
+  (let ((Moore (list
+                (amb 'Mary) ; replace this line if we are not told about Mary's family name
+                ; (amb 'Mary 'Lorna 'Melissa 'Rosalind 'Gabrielle)
+                (amb 'Lorna))))
+    (let ((Downing (list (amb 'Mary 'Lorna 'Melissa 'Rosalind 'Gabrielle)
+                         (amb 'Melissa))))
+      (let ((Hall (list (amb 'Mary 'Lorna 'Melissa 'Rosalind 'Gabrielle)
+                        (amb 'Rosalind))))
+        (let ((Barnacle (list (amb 'Mary 'Lorna 'Melissa 'Rosalind 'Gabrielle)
+                              (amb 'Gabrielle))))
+          (require (eq? (daughter-of Barnacle) (yacht-of Downing)))
+          (let ((Parker (list (amb 'Mary 'Lorna 'Melissa 'Rosalind 'Gabrielle)
+                              (amb 'Mary 'Lorna 'Melissa 'Rosalind 'Gabrielle))))
+            (require (distinct? (map daughter-of
+                                     (list Moore Downing Hall Barnacle Parker))))
+            (require (distinct? (map yacht-of
+                                     (list Moore Downing Hall Barnacle Parker))))
+            (require (accumulate (lambda (x y)
+                                   (and y (not (eq? (daughter-of x) (yacht-of x)))))
+                                 true
+                                 (list Moore Downing Hall Barnacle Parker)))
+            (let ((father-of-Gabrielle
+                   (first-of (lambda (x)
+                               (eq? (daughter-of x) 'Gabrielle))
+                             (list Moore Downing Hall Barnacle))))
+              (require (and father-of-Gabrielle
+                            (eq? (daughter-of Parker)
+                                 (yacht-of father-of-Gabrielle))))
+              (list (cons 'Moore Moore)
+                    (cons 'Downing Downing)
+                    (cons 'Hall Hall)
+                    (cons 'Barnacle Barnacle)
+                    (cons 'Parker Parker)))))))))
+
+; ========== E4.44
+; simple but slow
+(define (eight-queens)
+  (define (try-one row)
+    (list row (amb 1 2 3 4 5 6 7 8)))
+  (define (iter i)
+    (cons (try-one i)
+          (if (>= i 8)
+              '()
+              (iter (+ i 1)))))
+  (let ((trial (iter 1)))
+    (require (distinct? (map cadr trial)))
+    (require (distinct? (map (lambda (x)
+                               (+ (car x) (cadr x)))
+                             trial)))
+    (require (distinct? (map (lambda (x)
+                               (- (car x) (cadr x)))
+                             trial)))
+    trial))

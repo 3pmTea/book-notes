@@ -26,6 +26,47 @@
   (analyze (let->combination exp)))
 
 
+;; and
+(define (and? exp) (tagged-list? exp 'and))
+(define (and-expressions exp) (cdr exp))
+
+(define (analyze-and exp)
+  (define (iter exps env succeed fail)
+    (cond ((null? exps) (succeed true fail))
+          ((last-exp? exps)
+           ((car exps) env succeed fail))
+          (else
+           ((car exps)
+            env
+            (lambda (value fail2)
+              (if (true? value)
+                  (iter (cdr exps) env succeed fail2)
+                  (succeed false fail2)))
+            fail))))
+  (let ((exps (map analyze (and-expressions exp))))
+    (lambda (env succeed fail)
+      (iter exps env succeed fail))))
+
+;; or
+(define (or? exp) (tagged-list? exp 'or))
+(define (or-expressions exp) (cdr exp))
+
+(define (analyze-or exp)
+  (define (iter exps env succeed fail)
+    (if (null? exps)
+        (succeed false fail)
+        ((car exps)
+         env
+         (lambda (value fail2)
+           (if (true? value)
+               (succeed value fail2)
+               (iter (cdr exps) env succeed fail2)))
+         fail)))
+  (let ((exps (map analyze (or-expressions exp))))
+    (lambda (env succeed fail)
+      (iter exps env succeed fail))))
+
+
 ;; amb
 (define (amb? exp) (tagged-list? exp 'amb))
 (define (amb-choices exp) (cdr exp))
@@ -89,6 +130,8 @@
         ((begin? exp) (analyze-sequence (begin-actions exp)))
         ((cond? exp) (analyze (cond->if exp)))
         ((let? exp) (analyze-let exp))
+        ((and? exp) (analyze-and exp))
+        ((or? exp) (analyze-or exp))
         ((amb? exp) (analyze-amb exp))
         ((application? exp) (analyze-application exp))
         (else (error "Unknown expression type: ANALYZE" exp))))
