@@ -258,6 +258,7 @@
         (list 'list list)
         (list 'member member)
         (list 'eq? eq?)
+        (list 'memq memq)
         (list 'null? null?)))
 (define (primitive-procedure-names)
   (map car primitive-procedures))
@@ -290,7 +291,7 @@
 (define (prompt-for-input string)
   (newline) (display string) (newline))
 (define (announce-output string)
-  (display string) (newline))
+  (newline) (display string) (newline))
 (define (user-print object)
   (if (compound-procedure? object)
       (display (list 'compound-procedure
