@@ -3,9 +3,9 @@ Interval Computations
 
 Description:
 ---
-This topic comes from Exercises 2.14 - 2.16, where a problem is introduced that the results computed by different but algebraically equivalent expressions are different.
+A problem is proposed in Exercises 2.14 - 2.16, that the results computed by different but algebraically equivalent expressions are different.
 
-The cause of this problem is that, when a variable is used in an expression more than once, it is treated as independent interval variables rather than holding the same value. So when computing A/A using the procedures created before, we get an interval instead of 1.
+The cause of this problem is that, when multiple occurences of the same variable are to participate in the calculation, they are treated as independent interval variables rather than holding the same value. So when computing A/A using the procedures created before, we get an interval instead of 1.
 
 I have seen a solution for E2.16 like below:
 

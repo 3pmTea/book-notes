@@ -41,3 +41,17 @@
       (not (and (job ?person (?division . ?rest1))
                 (job ?supervisor (?division . ?rest2))
                 (supervisor ?person ?supervisor))))
+
+; ========== E4.59
+; a
+(meeting ?division (Friday ?time))
+
+; b
+(rule (meeting-time ?person ?day-and-time)
+      (or (and (job ?person (?division . ?rest))
+               (meeting ?division ?day-and-time))
+          (meeting whole-company ?day-and-time)))
+
+; c
+(meeting-time (Hacker Alyssa P) ?day-and-time)
+

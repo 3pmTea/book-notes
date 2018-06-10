@@ -8,7 +8,8 @@ The code in *Chapter.4c.rkt* can't run directly in DrRacket. A nondeterministic 
 
 Some notes:
 ---
-* I use \<func-name>-x.xx if 'func-name' is a built-in name of Racket.
+* I use *\<func-name>-x.xx* if *\<func-name>* is a built-in name of Racket.
+* The chapters on NLP, non-deterministic interpreter and logic programming are left undone. I'll finish them some time later.
 
 My contributions to [schemewiki](http://community.schemewiki.org/?sicp-solutions):
 ---
