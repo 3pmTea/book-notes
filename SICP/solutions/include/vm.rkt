@@ -1,6 +1,53 @@
 #lang racket
 
-;; test
+(require racket/mpair)
+
+(provide
+ 
+ ; basic operations
+ make-machine
+ set-register-contents!
+ get-register-contents
+ start
+
+ ; statistic interfaces
+ print-stack-stat
+ reset-stack-stat
+ print-execution-count
+ reset-execution-count
+ instruction-trace-on
+ instruction-trace-off
+ register-trace-on
+ register-trace-off)
+
+;; vm public interface
+(define (start machine) (machine 'start))
+(define (get-register-contents machine register-name)
+  (get-contents (get-register machine register-name)))
+(define (set-register-contents! machine register-name value)
+  (set-contents! (get-register machine register-name) value)
+  'done)
+(define (get-register machine reg-name)
+  ((machine 'get-register) reg-name))
+(define (print-stack-stat machine)
+  ((machine 'stack) 'print-statistics))
+(define (reset-stack-stat machine)
+  ((machine 'stack) 'initialize))
+(define (print-execution-count machine)
+  (machine 'print-execution-count))
+(define (reset-execution-count machine)
+  (machine 'reset-execution-count))
+(define (instruction-trace-on machine)
+  (machine 'trace-on))
+(define (instruction-trace-off machine)
+  (machine 'trace-off))
+(define (register-trace-on machine reg-name)
+  (((machine 'get-register) reg-name) 'trace-on))
+(define (register-trace-off machine reg-name)
+  (((machine 'get-register) reg-name) 'trace-off))
+
+
+;; test vm
 (define (test-vm)
   (define gcd-machine
     (make-machine
@@ -20,11 +67,23 @@
 
 ;; register
 (define (make-register name)
-  (let ((contents '*unassigned*))
+  (let ((contents '*unassigned*)
+        (trace-on false)) ; E5.18
     (define (dispatch message)
       (cond ((eq? message 'get) contents)
             ((eq? message 'set)
-             (lambda (value) (set! contents value)))
+             (lambda (value)
+               (when trace-on  ; E5.18
+                 (begin
+                   (newline)
+                   (display (list 'register name
+                                  'old-value '= contents
+                                  'new-value '= value))))
+               (set! contents value)))
+            ((eq? message 'trace-on) ; E5.18
+             (set! trace-on true))
+            ((eq? message 'trace-off) ; E5.18
+             (set! trace-on false))
             (else
              (error "Unknown request: REGISTER" message))))
     dispatch))
@@ -34,21 +93,38 @@
 
 ;; stack
 (define (make-stack)
-  (let ((s '()))
-    (define (push x) (set! s (cons x s)))
+  (let ((s '())
+        (number-pushes 0)
+        (max-depth 0)
+        (current-depth 0))
+    (define (push x)
+      (set! s (cons x s))
+      (set! number-pushes (+ 1 number-pushes))
+      (set! current-depth (+ 1 current-depth))
+      (set! max-depth (max current-depth max-depth)))
     (define (pop)
       (if (null? s)
           (error "Empty stack: POP")
           (let ((top (car s)))
             (set! s (cdr s))
+            (set! current-depth (- current-depth 1))
             top)))
     (define (initialize)
       (set! s '())
+      (set! number-pushes 0)
+      (set! max-depth 0)
+      (set! current-depth 0)
       'done)
+    (define (print-statistics)
+      (newline)
+      (display (list 'total-pushes '= number-pushes
+                     'maximum-depth '= max-depth)))
     (define (dispatch message)
       (cond ((eq? message 'push) push)
             ((eq? message 'pop) (pop))
             ((eq? message 'initialize) (initialize))
+            ((eq? message 'print-statistics)
+             (print-statistics))
             (else (error "Unknown request: STACK" message))))
     dispatch))
 (define (pop stack) (stack 'pop))
@@ -70,10 +146,14 @@
   (let ((pc (make-register 'pc))
         (flag (make-register 'flag))
         (stack (make-stack))
-        (the-instruction-sequence '()))
+        (the-instruction-sequence '())
+        (execution-count 0) ; added for E5.15
+        (trace-on false)) ; added for E5.16
     (let ((the-ops
            (list (list 'initialize-stack
-                       (lambda () (stack 'initialize)))))
+                       (lambda () (stack 'initialize)))
+                 (list 'print-stack-statistics
+                       (lambda () (stack 'print-statistics)))))
           (register-table
            (list (list 'pc pc) (list 'flag flag))))
       (define (allocate-register name)
@@ -93,6 +173,15 @@
           (if (null? insts)
               'done
               (begin
+                (set! execution-count (+ execution-count 1)) ; E5.15
+                (when trace-on
+                  (begin
+                    (newline)
+                    (when (not (null? (instruction-label (car insts))))
+                      (begin
+                        (display (instruction-label (car insts)))
+                        (newline)))
+                    (display (instruction-text (car insts))))) ; E5.16
                 ((instruction-execution-proc (car insts)))
                 (execute)))))
       (define (dispatch message)
@@ -111,16 +200,14 @@
                  (set! the-ops (append the-ops ops))))
               ((eq? message 'stack) stack)
               ((eq? message 'operations) the-ops)
+              ((eq? message 'print-execution-count)
+               (display (list 'execution-count '= execution-count))) ; E5.15
+              ((eq? message 'reset-execution-count)
+               (set! execution-count 0)) ; E5.15
+              ((eq? message 'trace-on) (set! trace-on true)) ; E5.16
+              ((eq? message 'trace-off) (set! trace-on false)) ; E5.16
               (else (error "Unknown request: MACHINE" message))))
       dispatch)))
-(define (start machine) (machine 'start))
-(define (get-register-contents machine register-name)
-  (get-contents (get-register machine register-name)))
-(define (set-register-contents! machine register-name value)
-  (set-contents! (get-register machine register-name) value)
-  'done)
-(define (get-register machine reg-name)
-  ((machine 'get-register) reg-name))
 
 ;; assembler
 (define (assemble controller-text machine)
@@ -137,12 +224,7 @@
        (lambda (insts labels)
          (let ((next-inst (car text)))
            (if (symbol? next-inst)
-               ;; original version
-               ; (receive insts
-               ;          (cons (make-label-entry next-inst insts)
-               ;                labels))
-               ;; modified version according to E5.8
-               (if (assoc next-inst labels)
+               (if (assoc next-inst labels) ; E5.8
                    (error "Duplicate label entry name: " next-inst)
                    (receive insts
                             (cons (make-label-entry next-inst insts)
@@ -162,12 +244,22 @@
         (make-execution-procedure
          (instruction-text inst)
          labels machine pc flag stack ops)))
-     insts)))
-(define (make-instruction text) (mcons text '()))
+     insts)
+    ;; add label information into instructions to support E5.16
+    (for-each
+     (lambda (label-entry)
+       (when (not (null? (cdr label-entry)))
+         (set-instruction-label! (cadr label-entry) (car label-entry))))
+     labels)))
+;; instruction structure is modified to support E5.17
+(define (make-instruction text) (mlist text '() '()))
 (define (instruction-text inst) (mcar inst))
-(define (instruction-execution-proc inst) (mcdr inst))
+(define (instruction-execution-proc inst) (mcar (mcdr inst)))
+(define (instruction-label inst) (mcar (mcdr (mcdr inst))))
 (define (set-instruction-execution-proc! inst proc)
-  (set-mcdr! inst proc))
+  (set-mcar! (mcdr inst) proc))
+(define (set-instruction-label! inst label)
+  (set-mcar! (mcdr (mcdr inst)) label))
 (define (make-label-entry label-name insts)
   (cons label-name insts))
 (define (lookup-label labels label-name)
