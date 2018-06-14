@@ -37,4 +37,6 @@
     (display (list 'result '= (get-register-contents vm 'val)))
     (newline)
     (loop))
+  (set-breakpoint vm 'after-fact 4)
+  (instruction-trace-on vm)
   (loop))

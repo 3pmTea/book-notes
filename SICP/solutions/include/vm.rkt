@@ -18,7 +18,9 @@
  instruction-trace-on
  instruction-trace-off
  register-trace-on
- register-trace-off)
+ register-trace-off
+ set-breakpoint
+ proceed-machine)
 
 ;; vm public interface
 (define (start machine) (machine 'start))
@@ -45,6 +47,11 @@
   (((machine 'get-register) reg-name) 'trace-on))
 (define (register-trace-off machine reg-name)
   (((machine 'get-register) reg-name) 'trace-off))
+(define (set-breakpoint machine label n)
+  ((machine 'set-breakpoint) label n))
+
+(define (proceed-machine machine)
+  (machine 'proceed))
 
 
 ;; test vm
@@ -162,12 +169,14 @@
         (the-labels '())
         (execution-count 0) ; added for E5.15
         (execute-instruction execute-only) ; label tracing
-        (breakpoints (make-hash)))
+        (breakpoints (make-hash))
+        (saved-pc (mlist 'halt)))
     (define (execute-with-trace inst)
       (when (executable-instruction? inst) ; label or breakpoint
         (set! execution-count (+ execution-count 1))) ; E5.15
+      (when (not (eq? (instruction-text inst) 'breakpoint))
+        (display (instruction-text inst)))
       (newline)
-      (display (instruction-text inst))
       ((instruction-execution-proc inst)))
     
     (let ((the-ops
@@ -191,15 +200,15 @@
               (error "Unknown register:" name))))
       (define (execute)
         (let ((insts (get-contents pc)))
-          (if (null? insts)
-              'done
-              (begin
-                (execute-instruction (mcar insts))
-                (execute)))))
+          (cond ((null? insts) 'halt)
+                ((mpair? insts)
+                 (execute-instruction (mcar insts))
+                 (execute))
+                (else insts))))
       (define (set-breakpoint label-text n)
         (let ((label (assoc label-text the-labels)))
           (if label
-              (insert-breakpoint breakpoints label n)
+              (insert-breakpoint breakpoints label n pc saved-pc)
               (error "Unknown label:" label-text))))
               
       (define (dispatch message)
@@ -228,8 +237,10 @@
               ((eq? message 'trace-off)
                (set! execute-instruction execute-only)) ; E5.16
               ((eq? message 'proceed)
+               (set-contents! pc (mcar saved-pc))
+               (set-mcar! saved-pc 'halt)
                (execute))
-              ((eq? message 'set-breakpoint) 'done)
+              ((eq? message 'set-breakpoint) set-breakpoint)
               ((eq? message 'cancel-breakpoint) 'done)
               ((eq? message 'cancel-all-breakpoints) 'done)
               (else (error "Unknown request: MACHINE" message))))
@@ -470,7 +481,28 @@
         (error "Unknown operation: ASSEMBLE" symbol))))
 
 ;; debugger
-(define (insert-breakpoint breakpoints label n)
+(define (make-breakpoint-instruction label-text n pc saved-pc)
+  (mcons 'breakpoint
+         (lambda ()
+           (set-mcar! saved-pc (mcdr (get-contents pc)))
+           (set-contents! pc 'paused)
+           (display "Breakpoint reached: ")
+           (display (list label-text n))
+           (newline))))
+(define (insert-breakpoint breakpoints label n pc saved-pc)
+  (define (find-instruction insts i)
+    (cond ((not (executable-instruction? (mcar insts)))
+           (find-instruction (mcdr insts) i))
+          ((> i 1)
+           (find-instruction (mcdr insts) (- i 1)))
+          (else insts)))
   (if (hash-ref breakpoints (cons (car label) n) false)
       (error "Breakpoint exist:" (car label) n)
-      'todo))
+      (let ((insts (find-instruction (cdr label) n))
+            (breakpoint (make-breakpoint-instruction
+                         (car label) n pc saved-pc)))
+        (let ((new-insts (mcons (mcar insts) (mcdr insts))))
+          (set-mcar! insts breakpoint)
+          (set-mcdr! insts new-insts)
+          (hash-set! breakpoints (cons (car label) n) insts)))))
+  
