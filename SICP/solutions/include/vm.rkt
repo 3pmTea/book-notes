@@ -65,6 +65,16 @@
   (start gcd-machine)
   (get-register-contents gcd-machine 'a)) ;; exptected output: 2
 
+;; test debugger
+(define (test-debug) 'done)
+
+;; mlist util
+(define (mfor-each f l)
+  (if (null? l)
+      'done
+      (begin (f (mcar l))
+             (mfor-each f (mcdr l)))))
+
 ;; register
 (define (make-register name)
   (let ((contents '*unassigned*)
@@ -143,12 +153,23 @@
     machine))
 
 (define (make-new-machine)
+  (define (execute-only inst) ((instruction-execution-proc inst)))
+  
   (let ((pc (make-register 'pc))
         (flag (make-register 'flag))
         (stack (make-stack))
         (the-instruction-sequence '())
+        (the-labels '())
         (execution-count 0) ; added for E5.15
-        (trace-on false)) ; added for E5.16
+        (execute-instruction execute-only) ; label tracing
+        (breakpoints (make-hash)))
+    (define (execute-with-trace inst)
+      (when (executable-instruction? inst) ; label or breakpoint
+        (set! execution-count (+ execution-count 1))) ; E5.15
+      (newline)
+      (display (instruction-text inst))
+      ((instruction-execution-proc inst)))
+    
     (let ((the-ops
            (list (list 'initialize-stack
                        (lambda () (stack 'initialize)))
@@ -173,24 +194,22 @@
           (if (null? insts)
               'done
               (begin
-                (set! execution-count (+ execution-count 1)) ; E5.15
-                (when trace-on
-                  (begin
-                    (newline)
-                    (when (not (null? (instruction-label (car insts))))
-                      (begin
-                        (display (instruction-label (car insts)))
-                        (newline)))
-                    (display (instruction-text (car insts))))) ; E5.16
-                ((instruction-execution-proc (car insts)))
+                (execute-instruction (mcar insts))
                 (execute)))))
+      (define (set-breakpoint label-text n)
+        (let ((label (assoc label-text the-labels)))
+          (if label
+              (insert-breakpoint breakpoints label n)
+              (error "Unknown label:" label-text))))
+              
       (define (dispatch message)
         (cond ((eq? message 'start)
                (set-contents! pc the-instruction-sequence)
                (execute))
               ((eq? message 'install-instruction-sequence)
-               (lambda (seq)
-                 (set! the-instruction-sequence seq)))
+               (lambda (assembly)
+                 (set! the-instruction-sequence (car assembly))
+                 (set! the-labels (cdr assembly))))
               ((eq? message 'allocate-register)
                allocate-register)
               ((eq? message 'get-register)
@@ -204,8 +223,15 @@
                (display (list 'execution-count '= execution-count))) ; E5.15
               ((eq? message 'reset-execution-count)
                (set! execution-count 0)) ; E5.15
-              ((eq? message 'trace-on) (set! trace-on true)) ; E5.16
-              ((eq? message 'trace-off) (set! trace-on false)) ; E5.16
+              ((eq? message 'trace-on)
+               (set! execute-instruction execute-with-trace)) ; E5.16
+              ((eq? message 'trace-off)
+               (set! execute-instruction execute-only)) ; E5.16
+              ((eq? message 'proceed)
+               (execute))
+              ((eq? message 'set-breakpoint) 'done)
+              ((eq? message 'cancel-breakpoint) 'done)
+              ((eq? message 'cancel-all-breakpoints) 'done)
               (else (error "Unknown request: MACHINE" message))))
       dispatch)))
 
@@ -215,7 +241,7 @@
    controller-text
    (lambda (insts labels)
      (update-insts! insts labels machine)
-     insts)))
+     (cons insts labels))))
 (define (extract-labels text receive)
   (if (null? text)
       (receive '() '())
@@ -229,15 +255,15 @@
                    (receive insts
                             (cons (make-label-entry next-inst insts)
                                   labels)))
-               (receive (cons (make-instruction next-inst)
-                              insts)
+               (receive (mcons (make-instruction next-inst)
+                               insts)
                         labels)))))))
 (define (update-insts! insts labels machine)
   (let ((pc (get-register machine 'pc))
         (flag (get-register machine 'flag))
         (stack (machine 'stack))
         (ops (machine 'operations)))
-    (for-each
+    (mfor-each
      (lambda (inst)
        (set-instruction-execution-proc!
         inst
@@ -246,20 +272,23 @@
          labels machine pc flag stack ops)))
      insts)
     ;; add label information into instructions to support E5.16
-    (for-each
-     (lambda (label-entry)
-       (when (not (null? (cdr label-entry)))
-         (set-instruction-label! (cadr label-entry) (car label-entry))))
-     labels)))
-;; instruction structure is modified to support E5.17
-(define (make-instruction text) (mlist text '() '()))
+    (define (process label-entry)
+      (when (not (null? (cdr label-entry)))
+        (prepend-label (car label-entry) (cdr label-entry) pc)))
+    (define (iter f l)
+      (cond ((null? l) 'done)
+            ((or (null? (cdr l))
+                 (not (eq? (cdar l) (cdadr l))))
+             (f (car l))
+             (iter f (cdr l)))
+            (else (iter f (cdr l)))))
+    (iter process labels)))
+
+(define (make-instruction text) (mcons text '()))
 (define (instruction-text inst) (mcar inst))
-(define (instruction-execution-proc inst) (mcar (mcdr inst)))
-(define (instruction-label inst) (mcar (mcdr (mcdr inst))))
+(define (instruction-execution-proc inst) (mcdr inst))
 (define (set-instruction-execution-proc! inst proc)
-  (set-mcar! (mcdr inst) proc))
-(define (set-instruction-label! inst label)
-  (set-mcar! (mcdr (mcdr inst)) label))
+  (set-mcdr! inst proc))
 (define (make-label-entry label-name insts)
   (cons label-name insts))
 (define (lookup-label labels label-name)
@@ -267,6 +296,16 @@
     (if val
         (cdr val)
         (error "Undefined label: ASSEMBLE" label-name))))
+(define (prepend-label text insts pc)
+  (let ((new-insts (mcons (mcar insts) (mcdr insts)))
+        (inst (mcar insts))
+        (label-inst (make-instruction text)))
+    (set-mcdr! label-inst
+               (lambda () (advance-pc pc)))
+    (set-mcar! insts label-inst)
+    (set-mcdr! insts new-insts)))
+(define (executable-instruction? inst) ; instructions except labels or breakpoints
+  (pair? (instruction-text inst)))
 
 ;; instruction dispatcher
 (define (make-execution-procedure
@@ -307,7 +346,7 @@
 (define (assign-value-exp assign-instruction)
   (cddr assign-instruction))
 (define (advance-pc pc)
-  (set-contents! pc (cdr (get-contents pc))))
+  (set-contents! pc (mcdr (get-contents pc))))
 
 ;; test instruction
 (define (make-test inst machine labels operations flag pc)
@@ -429,3 +468,9 @@
     (if val
         (cadr val)
         (error "Unknown operation: ASSEMBLE" symbol))))
+
+;; debugger
+(define (insert-breakpoint breakpoints label n)
+  (if (hash-ref breakpoints (cons (car label) n) false)
+      (error "Breakpoint exist:" (car label) n)
+      'todo))
