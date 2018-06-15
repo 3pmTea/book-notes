@@ -10,7 +10,10 @@
  get-register-contents
  start
 
- ; statistic interfaces
+ ; analyzing interfaces
+ analyze
+
+ ; debugging interfaces
  print-stack-stat
  reset-stack-stat
  print-execution-count
@@ -24,7 +27,7 @@
  cancel-all-breakpoints
  proceed-machine)
 
-;; vm public interface
+;; vm public interface definitions
 (define (start machine) (machine 'start))
 (define (get-register-contents machine register-name)
   (get-contents (get-register machine register-name)))
@@ -57,13 +60,19 @@
   (machine 'cancel-all-breakpoints))
 (define (proceed-machine machine)
   (machine 'proceed))
+(define (analyze machine)
+  (machine 'analyze))
 
+
+;; private
+(define (force-get-register machine reg-name)
+  ((machine 'force-get-register) reg-name))
 
 ;; test vm
 (define (test-vm)
   (define gcd-machine
     (make-machine
-     '(a b t)
+     '()
      (list (list 'rem remainder) (list '= =))
      '(test-b (test (op =) (reg b) (const 0))
               (branch (label gcd-done))
@@ -97,10 +106,10 @@
              (lambda (value)
                (when trace-on  ; E5.18
                  (begin
-                   (newline)
                    (display (list 'register name
                                   'old-value '= contents
-                                  'new-value '= value))))
+                                  'new-value '= value))
+                   (newline)))
                (set! contents value)))
             ((eq? message 'trace-on) ; E5.18
              (set! trace-on true))
@@ -138,9 +147,9 @@
       (set! current-depth 0)
       'done)
     (define (print-statistics)
-      (newline)
       (display (list 'total-pushes '= number-pushes
-                     'maximum-depth '= max-depth)))
+                     'maximum-depth '= max-depth))
+      (newline))
     (define (dispatch message)
       (cond ((eq? message 'push) push)
             ((eq? message 'pop) (pop))
@@ -203,6 +212,17 @@
           (if val
               (cadr val)
               (error "Unknown register:" name))))
+      (define (lookup-or-allocate-register name)
+        (let ((val (assoc name register-table)))
+          (if val
+              (cadr val)
+              (let ((reg (make-register name)))
+                (set! register-table
+                      (cons (list name reg) register-table))
+                (display "Auto allocated new register - ")
+                (display name)
+                (newline)
+                reg))))
       (define (execute)
         (let ((insts (get-contents pc)))
           (cond ((null? insts) 'halt)
@@ -232,6 +252,8 @@
                allocate-register)
               ((eq? message 'get-register)
                lookup-register)
+              ((eq? message 'force-get-register)
+               lookup-or-allocate-register)
               ((eq? message 'install-operations)
                (lambda (ops)
                  (set! the-ops (append the-ops ops))))
@@ -253,6 +275,8 @@
               ((eq? message 'cancel-breakpoint) cancel-breakpoint)
               ((eq? message 'cancel-all-breakpoints)
                (remove-all-breakpoints breakpoints))
+              ((eq? message 'analyze)
+               (error "todo"))
               (else (error "Unknown request: MACHINE" message))))
       dispatch)))
 
@@ -351,7 +375,7 @@
 ;; assign instruction
 (define (make-assign inst machine labels operations pc)
   (let ((target
-         (get-register machine (assign-reg-name inst)))
+         (force-get-register machine (assign-reg-name inst)))
         (value-exp (assign-value-exp inst)))
     (let ((value-proc
            (if (operation-exp? value-exp)
@@ -408,7 +432,7 @@
                          (label-exp-label dest))))
              (lambda () (set-contents! pc insts))))
           ((register-exp? dest)
-           (let ((reg (get-register
+           (let ((reg (force-get-register
                        machine
                        (register-exp-reg dest))))
              (lambda ()
@@ -419,14 +443,14 @@
 
 ;; save instruction
 (define (make-save inst machine stack pc)
-  (let ((reg (get-register machine
+  (let ((reg (force-get-register machine
                            (stack-inst-reg-name inst))))
     (lambda ()
       (push stack (get-contents reg))
       (advance-pc pc))))
 ;; restore instruction
 (define (make-restore inst machine stack pc)
-  (let ((reg (get-register machine
+  (let ((reg (force-get-register machine
                            (stack-inst-reg-name inst))))
     (lambda ()
       (set-contents! reg (pop stack))
@@ -455,7 +479,7 @@
                        (label-exp-label exp))))
            (lambda () insts)))
         ((register-exp? exp)
-         (let ((r (get-register machine (register-exp-reg exp))))
+         (let ((r (force-get-register machine (register-exp-reg exp))))
            (lambda () (get-contents r))))
         (else (error "Unknown expression type: ASSEMBLE" exp))))
 (define (tagged-list? exp tag)

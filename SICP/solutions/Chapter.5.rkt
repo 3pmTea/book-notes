@@ -1,5 +1,6 @@
 #lang racket
 
+(require racket/mpair)
 (require "include/vm.rkt")
 
 ; ==========E5.1
@@ -86,7 +87,7 @@
 (define (solution-5.14)
   (define vm
     (make-machine
-     '(n val continue)
+     '()
      (list (list '= =) (list '* *) (list '- -))
      '((assign continue (label fact-done))
 
@@ -111,14 +112,12 @@
 
        fact-done)))
   (define (loop)
-    (let ((n (read)))
+    (let ((n (begin (display "Input n: ") (read))))
       (set-register-contents! vm 'n n))
     (start vm)
     (display (list 'result '= (get-register-contents vm 'val)))
     (newline)
     (loop))
-  (set-breakpoint vm 'after-fact 4)
-  (instruction-trace-on vm)
   (loop))
 
 ; ==========E5.20
@@ -126,3 +125,167 @@
 ; the-car  n1  p1  p1  <free>
 ; the-cdr  n2  e0  p2  <free>
 
+; ==========E5.21
+(define (vm-5.21a)
+  (define vm
+    (make-machine
+     '()
+     (list (list 'car car) (list 'cdr cdr) (list 'not not)
+           (list 'null? null?) (list 'pair? pair?) (list '+ +))
+     '((assign continue (label count-done))
+       
+       count-leaves
+       (test (op null?) (reg t))
+       (branch (label count-null))
+       (test (op pair?) (reg t))
+       (branch (label count-1))
+       (goto (label count-leave))
+
+       count-1
+       (save t)
+       (assign t (op car) (reg t))
+       (save continue)
+       (assign continue (label count-2))
+       (goto (label count-leaves))
+
+       count-2
+       (restore continue)
+       (restore t)
+       (assign t (op cdr) (reg t))
+       (save val)
+       (save continue)
+       (assign continue (label add))
+       (goto (label count-leaves))
+
+       add
+       (restore continue)
+       (assign t (reg val))
+       (restore val)
+       (assign val (op +) (reg val) (reg t))
+       (goto (reg continue))
+
+       count-leave
+       (assign val (const 1))
+       (goto (reg continue))
+                
+       count-null
+       (assign val (const 0))
+       (goto (reg continue))
+
+       count-done)))
+  (let ((t (begin (display "input a tree: ") (read))))
+    (set-register-contents! vm 't t)
+    ; (instruction-trace-on vm)
+    ; (register-trace-on vm 't)
+    ; (register-trace-on vm 'val)
+    (start vm)
+    (display (list 'result '= (get-register-contents vm 'val)))))
+
+(define (vm-5.21b)
+  (define vm
+    (make-machine
+     '()
+     (list (list 'null? null?) (list 'pair? pair?) (list 'car car)
+           (list 'cdr cdr) (list '+ +))
+     '((assign n (const 0))
+       (assign continue (label count-done))
+
+       count-iter
+       (test (op null?) (reg t))
+       (branch (label count-null))
+       (test (op pair?) (reg t))
+       (branch (label count-tree-1))
+       (goto (label count-leave))
+
+       count-tree-1
+       (save t)
+       (assign t (op car) (reg t))
+       (save continue)
+       (assign continue (label count-tree-2))
+       (goto (label count-iter))
+
+       count-tree-2
+       (restore continue)
+       (restore t)
+       (save n)
+       (assign n (reg val))
+       (assign t (op cdr) (reg t))
+       (goto (label count-iter))
+
+       count-null
+       (assign val (reg n))
+       (goto (reg continue))
+
+       count-leave
+       (assign val (op +) (reg n) (const 1))
+       (goto (reg continue))
+
+       count-done)))
+  (let ((t (begin (display "input a tree: ") (read))))
+    (set-register-contents! vm 't t)
+    (start vm)
+    (display (list 'result '= (get-register-contents vm 'val)))))
+
+; ==========E5.22
+(define (vm-5.22a)
+  (define vm
+    (make-machine
+     '()
+     (list (list 'null? null?) (list 'car car) (list 'cdr cdr)
+           (list 'cons cons))
+     '((assign continue (label append-done))
+
+       append
+       (test (op null?) (reg x))
+       (branch (label null-x))
+       (save x)
+       (assign x (op cdr) (reg x))
+       (save continue)
+       (assign continue (label merging))
+       (goto (label append))
+
+       merging
+       (restore continue)
+       (restore x)
+       (assign y (op car) (reg x))
+       (assign val (op cons) (reg y) (reg val))
+       (goto (reg continue))
+
+       null-x
+       (assign val (reg y))
+       (goto (reg continue))
+
+       append-done)))
+  (let ((list1 (begin (display "Input list #1: ") (read)))
+        (list2 (begin (display "Input list #2: ") (read))))
+    (set-register-contents! vm 'x list1)
+    (set-register-contents! vm 'y list2)
+    (start vm)
+    (display (list 'result '= (get-register-contents vm 'val)))))
+
+(define (vm-5.22b)
+  (define vm
+    (make-machine
+     '()
+     (list (list 'cdr mcdr) (list 'null? null?)
+           (list 'set-cdr! set-mcdr!))
+     '((save x)
+       
+       last-pair
+       (assign val (op cdr) (reg x))
+       (test (op null?) (reg val))
+       (branch (label base-case))
+       (assign x (op cdr) (reg x))
+       (goto (label last-pair))
+
+       base-case
+       (assign val (reg x))
+       
+       (perform (op set-cdr!) (reg val) (reg y))
+       (restore x))))
+  (let ((list1 (begin (display "Input list #1: ") (read)))
+        (list2 (begin (display "Input list #2: ") (read))))
+    (set-register-contents! vm 'x (list->mlist list1))
+    (set-register-contents! vm 'y (list->mlist list2))
+    (start vm)
+    (display (list 'result '= (mlist->list (get-register-contents vm 'x))))))
