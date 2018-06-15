@@ -20,6 +20,8 @@
  register-trace-on
  register-trace-off
  set-breakpoint
+ cancel-breakpoint
+ cancel-all-breakpoints
  proceed-machine)
 
 ;; vm public interface
@@ -49,7 +51,10 @@
   (((machine 'get-register) reg-name) 'trace-off))
 (define (set-breakpoint machine label n)
   ((machine 'set-breakpoint) label n))
-
+(define (cancel-breakpoint machine label n)
+  ((machine 'cancel-breakpoint) label n))
+(define (cancel-all-breakpoints machine)
+  (machine 'cancel-all-breakpoints))
 (define (proceed-machine machine)
   (machine 'proceed))
 
@@ -170,7 +175,7 @@
         (execution-count 0) ; added for E5.15
         (execute-instruction execute-only) ; label tracing
         (breakpoints (make-hash))
-        (saved-pc (mlist 'halt)))
+        (saved-pc (mlist '())))
     (define (execute-with-trace inst)
       (when (executable-instruction? inst) ; label or breakpoint
         (set! execution-count (+ execution-count 1))) ; E5.15
@@ -210,7 +215,11 @@
           (if label
               (insert-breakpoint breakpoints label n pc saved-pc)
               (error "Unknown label:" label-text))))
-              
+      (define (cancel-breakpoint label-text n)
+        (let ((label (assoc label-text the-labels)))
+          (if label
+              (remove-breakpoint breakpoints label-text n)
+              (error "Unknown label:" label-text))))
       (define (dispatch message)
         (cond ((eq? message 'start)
                (set-contents! pc the-instruction-sequence)
@@ -238,11 +247,12 @@
                (set! execute-instruction execute-only)) ; E5.16
               ((eq? message 'proceed)
                (set-contents! pc (mcar saved-pc))
-               (set-mcar! saved-pc 'halt)
+               (set-mcar! saved-pc '())
                (execute))
               ((eq? message 'set-breakpoint) set-breakpoint)
-              ((eq? message 'cancel-breakpoint) 'done)
-              ((eq? message 'cancel-all-breakpoints) 'done)
+              ((eq? message 'cancel-breakpoint) cancel-breakpoint)
+              ((eq? message 'cancel-all-breakpoints)
+               (remove-all-breakpoints breakpoints))
               (else (error "Unknown request: MACHINE" message))))
       dispatch)))
 
@@ -464,7 +474,9 @@
                          operations))
         (aprocs
          (map (lambda (e)
-                (make-primitive-exp e machine labels))
+                (if (label-exp? e) ; E5.9
+                    (error "Operations can't be used with labels")
+                    (make-primitive-exp e machine labels)))
               (operation-exp-operands exp))))
     (lambda ()
       (apply op (map (lambda (p) (p)) aprocs)))))
@@ -505,4 +517,22 @@
           (set-mcar! insts breakpoint)
           (set-mcdr! insts new-insts)
           (hash-set! breakpoints (cons (car label) n) insts)))))
+(define (remove-breakpoint breakpoints label-text n)
+  (let ((breakpoint (hash-ref breakpoints (cons label-text n) false)))
+    (if breakpoint
+        (begin
+          (set-mcar! breakpoint (mcar (mcdr breakpoint)))
+          (set-mcdr! breakpoint (mcdr (mcdr breakpoint)))
+          (hash-remove! breakpoints (cons label-text n))
+          (display (list "Removed breakpoint at" label-text n)))
+        (error "Breakpoint does not exist:" label-text n))))
+(define (remove-all-breakpoints breakpoints)
+  (hash-for-each
+   breakpoints
+   (lambda (key breakpoint)
+     (set-mcar! breakpoint (mcar (mcdr breakpoint)))
+     (set-mcdr! breakpoint (mcdr (mcdr breakpoint)))))
+  (hash-clear! breakpoints)
+  (display "Breakpoints cleared"))
+                 
   
