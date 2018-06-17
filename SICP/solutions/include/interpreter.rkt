@@ -98,7 +98,7 @@
                      (sequence->exp (cond-actions first))
                      (expand-clauses rest))))))
 
-; === Region begin - evaluation strategy implementation
+; === Region begin - evaluation implementation
 
 (define (eval exp env)
   (cond ((self-evaluating? exp) exp)
