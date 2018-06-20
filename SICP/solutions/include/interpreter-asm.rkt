@@ -100,12 +100,11 @@
 ; cond - this doesn't perform syntax check, assuming the syntax is valid
 (define (cond? exp) (tagged-list? exp 'cond))
 (define (cond-clauses exp) (cdr exp))
-(define (cond-first-clause clauses) (car clauses))
-(define (cond-clause-predicate clause) (car clause))
-(define (cond-clause-actions clause) (cdr clause))
-(define (cond-rest-clauses clauses) (cdr clauses))
 (define (cond-else-clause? clauses)
-  (null? (cdr clauses)))
+  (eq? (cond-first-clause-predicate clauses) 'else))
+(define (cond-first-clause-predicate clauses) (caar clauses))
+(define (cond-first-clause-actions clauses) (cdar clauses))
+(define (cond-rest-clauses clauses) (cdr clauses))
 
 ; op table of the vm
 (define eceval-operations
@@ -126,6 +125,7 @@
         (list 'lookup-variable-value lookup-variable-value)
         (list 'text-of-quotation text-of-quotation)
         (list 'lambda-parameters lambda-parameters)
+        `(null? ,null?)
         `(lambda-body ,lambda-body)
         `(make-procedure ,make-procedure)
         `(operands ,operands)
@@ -166,10 +166,10 @@
         `(letrec->let ,letrec->let)
         `(cond? ,cond?)
         `(cond-clauses ,cond-clauses)
-        `(cond-first-clause ,cond-first-clause)
-        `(cond-clause-predicate ,cond-clause-predicate)
+        `(cond-else-clause? ,cond-else-clause?)
+        `(cond-first-clause-predicate ,cond-first-clause-predicate)
+        `(cond-first-clause-actions ,cond-first-clause-actions)
         `(cond-rest-clauses ,cond-rest-clauses)
-        `(cond-clause-actions ,cond-clause-actions)
         `(cond-else-clause? ,cond-else-clause?)))
 
 ; the interpreter running on the vm
@@ -327,7 +327,7 @@
      compound-apply
      (assign unev (op procedure-parameters) (reg proc))
      (assign env (op procedure-environment) (reg proc))
-     (assign argl (op list->mlist) (reg argl)) ; added for compatibility
+     (assign argl (op list->mlist) (reg argl)) ; added for racket compatibility
      (assign env (op extend-environment)
              (reg unev) (reg argl) (reg env))
      (assign unev (op procedure-body) (reg proc))
@@ -385,10 +385,12 @@
      (save continue)
 
      ev-cond-loop
+     (test (op null?) (reg unev))
+     (branch (label ev-cond-empty-clause))
+     ; flaw: it doesn't perform a validation for the usage of 'else'
      (test (op cond-else-clause?) (reg unev))
      (branch (label ev-cond-do-action))
-     (assign exp (op cond-first-clause) (reg unev))
-     (assign exp (op cond-clause-predicate) (reg exp))
+     (assign exp (op cond-first-clause-predicate) (reg unev))
      (save unev)
      (save env)
      (assign continue (label ev-cond-decide))
@@ -403,9 +405,13 @@
      (goto (label ev-cond-loop))
 
      ev-cond-do-action
-     (assign exp (op cond-first-clause) (reg unev))
-     (assign unev (op cond-clause-actions) (reg exp))
+     (assign unev (op cond-first-clause-actions) (reg unev))
      (goto (label ev-sequence))
+
+     ev-cond-empty-clause
+     (assign val (const 'undefined))
+     (restore continue)
+     (goto (reg continue))
 
      ev-assignment
      (assign unev (op assignment-variable) (reg exp))
