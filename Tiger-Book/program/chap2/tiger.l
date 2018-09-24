@@ -3,8 +3,12 @@
 #include "util.h"
 #include "tokens.h"
 #include "errormsg.h"
+#define STRING_LIMIT 1024
 
 int charPos = 1;
+static int commentLv = 0;
+static char buf[STRING_LIMIT];
+static int bufPos = 0;
 
 int yywrap(void)
 {
@@ -18,6 +22,21 @@ void adjust(void)
     charPos += yyleng;
 }
 
+void bufReset()
+{
+    bufPos = 0;
+}
+
+void bufFinish()
+{
+    buf[bufPos] = '\0';
+}
+
+void bufAppend(char c)
+{
+    buf[bufPos++] = c;
+}
+
 %}
 
 digit   [0-9]
@@ -28,14 +47,34 @@ space   [\t ]
 %x      string
 %%
 
-<comment>"*/"   {adjust(); BEGIN(INITIAL);}
-<comment>.|\n   {adjust(); continue;}
-<string>\"  {adjust(); BEGIN(INITIAL); return STRING;}
-<string>.   {adjust(); yymore();}
+<comment>"*/"   {adjust(); if (--commentLv == 0) BEGIN(INITIAL);}
+<comment>"/*"   {adjust(); commentLv++;}
+<comment>\n     {EM_newline();}
+<comment>.      {adjust();}
+<string>\"      {adjust(); bufFinish(); yylval.sval=strdup(buf); BEGIN(INITIAL); return STRING;}
+<string>\n      {EM_error(EM_tokPos, "LEX ERROR: unfinished string."); EM_newline(); yymore();}
+<string>\\[ \t\n\r]+\\  {yymore();}
+<string>\\t     {bufAppend('\t'); yymore();}
+<string>\\n     {bufAppend('\n'); yymore();}
+<string>\\\\    {bufAppend('\\'); yymore();}
+<string>\\\"    {bufAppend('\"'); yymore();}
+<string>\\{digit}{3}    {
+                            int n = atoi(yytext+1);
+                            if (n>0 && n<256) {
+                                bufAppend((char)n);
+                                yymore();
+                            } else {
+                                EM_error(EM_tokPos, "invalid ascii code");
+                            }
+                            yymore();
+                        }
+<string>.   {bufAppend(yytext[yyleng-1]); yymore();}
 
-{space}     {adjust(); continue;}
-\n	        {adjust(); EM_newline(); continue;}
-\"          {adjust(); yylval.sval = yytext; BEGIN(string);}
+{space}     {adjust();}
+\n	        {EM_newline();}
+\r          {}
+"/*"        {adjust(); commentLv++; BEGIN(comment);}
+\"          {adjust(); bufReset(); BEGIN(string);}
 ","	        {adjust(); return COMMA;}
 ":"         {adjust(); return COLON;}
 ";"         {adjust(); return SEMICOLON;}
@@ -59,7 +98,6 @@ space   [\t ]
 "&"         {adjust(); return AND;}
 "|"         {adjust(); return OR;}
 ":="        {adjust(); return ASSIGN;}
-"/*"        {adjust(); BEGIN(comment);}
 
 array       {adjust(); return ARRAY;}
 if          {adjust(); return IF;}
@@ -80,6 +118,7 @@ var         {adjust(); return VAR;}
 type        {adjust(); return TYPE;}
 [0-9]+	    {adjust(); yylval.ival = atoi(yytext); return INT;}
 {id}        {adjust(); yylval.sval = yytext; return ID;}
-.	        {adjust(); EM_error(EM_tokPos,"illegal token");}
+
+.	        {adjust(); EM_error(EM_tokPos,"illegal token: %s", yytext);}
 
 

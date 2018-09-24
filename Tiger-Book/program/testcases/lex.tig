@@ -1,0 +1,17 @@
+/* 1 /* 2 /* 3 */*/ ... 
+/* nested comment test */
+*/
+
+var s1 := "a\ta"
+var s2 := "b\"b"
+var s3 := "c\nc"
+var s4 := "d\\d"
+var s5 := "\065"
+var s := "123 abc\t\"\n\\\065"
+var ls := "1\
+          \23\
+          \4"  
+
+var err1 := "
+"
+var err2 := "\300"
