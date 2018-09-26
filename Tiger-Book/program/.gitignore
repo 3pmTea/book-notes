@@ -1,3 +1,7 @@
 *.o
-lex.yy.c
-lextest
+chap2/lex.yy.c
+chap2/lextest
+chap3/a.out
+chap3/y.tab.[ch]
+chap3/lex.yy.c
+chap3/y.output
