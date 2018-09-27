@@ -76,7 +76,7 @@ typeid:   ID
 exp:      lvalue
         | NIL
         | INT
-        | MINUS INT
+        | MINUS exp
         | exp op exp
         | STRING
         | typeid LBRACE fieldinitlist RBRACE
@@ -89,6 +89,7 @@ exp:      lvalue
         | BREAK
         | LET decs IN expseq END
         | LPAREN expseq RPAREN
+        | ID LPAREN paramlist RPAREN
         ;
 
 fieldinitlist:
@@ -97,6 +98,14 @@ fieldinitlist:
                 
 fieldinits:
                 | fieldinits ID EQ exp COMMA
+                ;
+
+paramlist:
+                | params exp
+                ;
+
+params:
+                | params exp COMMA
                 ;
 
 expseq:
@@ -108,9 +117,12 @@ exps:
                 ;
 
 lvalue:   ID
-        | lvalue DOT ID
+        | lvaccess lvalue
         | subscript
         ;
+
+lvaccess:       lvalue DOT
+              ;
 
 subscript:      ID LBRACK exp RBRACK
               ;
